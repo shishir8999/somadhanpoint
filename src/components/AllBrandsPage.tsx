@@ -9,11 +9,16 @@ import {
   CheckCircle2,
   Tag,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
-import { fetchBrandsFromDatabase, saveBrandsToDatabase } from '../utils/apiSync';
+import {
+  fetchBrandsFromDatabase,
+  saveBrandsToDatabase,
+  deleteBrandFromDatabase,
+} from '../utils/apiSync';
 
 export interface BrandRow {
   id: string;
@@ -67,6 +72,8 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<BrandRow | null>(null);
+  const [brandToDelete, setBrandToDelete] = useState<BrandRow | null>(null);
+  const isInitialMount = useRef(true);
 
   // New brand form
   const [newName, setNewName] = useState('');
@@ -107,9 +114,14 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
 
   // Persist to localStorage and server database whenever brands change
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     try {
       localStorage.setItem('ummah_admin_brands_list', JSON.stringify(brandsList));
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('brands-updated'));
     } catch (e) {
       console.error('Failed to save brands to localStorage', e);
     }
@@ -171,9 +183,17 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
     e.preventDefault();
     if (!editingBrand) return;
 
-    setBrandsList((prev) =>
-      prev.map((b) => (b.id === editingBrand.id ? editingBrand : b))
+    const updated = brandsList.map((b) =>
+      String(b.id) === String(editingBrand.id) ? editingBrand : b
     );
+    setBrandsList(updated);
+    try {
+      localStorage.setItem('ummah_admin_brands_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('brands-updated'));
+    } catch {}
+    saveBrandsToDatabase(updated);
+
     showToast(`ব্র্যান্ড "${editingBrand.name}" সফলভাবে আপডেট হয়েছে!`);
     triggerGlobalSuccessModal({
       title: 'ব্র্যান্ড সেভ হয়েছে!',
@@ -182,23 +202,29 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
     setEditingBrand(null);
   };
 
-  const handleDeleteBrand = (id: string, name: string) => {
-    if (confirm(`আপনি কি সত্যিই "${name}" ব্র্যান্ডটি মুছে ফেলতে চান?`)) {
-      const updated = brandsList.filter((b) => b.id !== id);
-      setBrandsList(updated);
-      try {
-        localStorage.setItem('ummah_admin_brands_list', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new Event('brands-updated'));
-      } catch {}
-      saveBrandsToDatabase(updated);
-      fetch(`/api/brands/${id}`, { method: 'DELETE' });
-      showToast(`ব্র্যান্ড "${name}" মুছে ফেলা হয়েছে!`);
-      triggerGlobalSuccessModal({
-        title: 'ব্র্যান্ড মুছে ফেলা হয়েছে!',
-        message: `"${name}" ব্র্যান্ডটি সফলভাবে ডাটাবেজ থেকে চিরতরে মুছে ফেলা হয়েছে।`,
-      });
-    }
+  const handleDeleteBrand = (brand: BrandRow) => {
+    setBrandToDelete(brand);
+  };
+
+  const confirmDeleteBrand = () => {
+    if (!brandToDelete) return;
+    const id = brandToDelete.id;
+    const name = brandToDelete.name;
+    const updated = brandsList.filter((b) => String(b.id) !== String(id));
+    setBrandsList(updated);
+    setBrandToDelete(null);
+    try {
+      localStorage.setItem('ummah_admin_brands_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('brands-updated'));
+    } catch {}
+    saveBrandsToDatabase(updated);
+    deleteBrandFromDatabase(id);
+    showToast(`ব্র্যান্ড "${name}" মুছে ফেলা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ব্র্যান্ড মুছে ফেলা হয়েছে!',
+      message: `"${name}" ব্র্যান্ডটি সফলভাবে ডাটাবেজ থেকে চিরতরে মুছে ফেলা হয়েছে।`,
+    });
   };
 
   const filteredBrands = brandsList.filter((b) =>
@@ -333,7 +359,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                           </button>
 
                           <button
-                            onClick={() => handleDeleteBrand(brand.id, brand.name)}
+                            onClick={() => handleDeleteBrand(brand)}
                             className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -613,6 +639,60 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* CONFIRM DELETE BRAND MODAL                                */}
+      {/* ========================================================= */}
+      {brandToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-[#990000] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0" />
+                <h3 className="text-sm font-bold">ব্র্যান্ড মুছে ফেলার নিশ্চিতকরণ</h3>
+              </div>
+              <button
+                onClick={() => setBrandToDelete(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg text-slate-700 space-y-1.5">
+                <p className="font-bold text-red-900 text-sm">
+                  আপনি কি নিশ্চিত যে এই ব্র্যান্ডটি মুছে ফেলতে চান?
+                </p>
+                <p className="font-semibold text-slate-800 text-xs">
+                  ব্র্যান্ডের নাম: "{brandToDelete.name}"
+                </p>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  এটি ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে এবং ক্যাটালগ থেকে রিমুভ হবে।
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setBrandToDelete(null)}
+                  className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-100 font-bold transition-colors cursor-pointer"
+                >
+                  বাতিল (Cancel)
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteBrand}
+                  className="px-4 py-2 bg-[#990000] hover:bg-[#800000] text-white rounded font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>হ্যাঁ, মুছে ফেলুন</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

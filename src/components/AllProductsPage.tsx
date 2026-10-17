@@ -21,7 +21,12 @@ import { AdminProductModal } from './AdminProductModal';
 import { SuccessSaveModal } from './SuccessSaveModal';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 import { ColorVariant } from '../types';
-import { fetchProductsFromDatabase, saveProductsToDatabase } from '../utils/apiSync';
+import {
+  fetchProductsFromDatabase,
+  saveProductsToDatabase,
+  saveSingleProductToDatabase,
+  deleteProductFromDatabase,
+} from '../utils/apiSync';
 
 export interface AdminProductRow {
   id: string;
@@ -74,6 +79,8 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProductRow | null>(null);
+  const [productToDelete, setProductToDelete] = useState<AdminProductRow | null>(null);
+  const isInitialMount = React.useRef(true);
   const [successModal, setSuccessModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -369,6 +376,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
 
   // Sync productsList with localStorage and server database
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     try {
       localStorage.setItem('ummah_admin_products_list', JSON.stringify(productsList));
       window.dispatchEvent(new Event('storage'));
@@ -401,6 +412,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       window.dispatchEvent(new Event('products-updated'));
     } catch {}
     saveProductsToDatabase(updated);
+    saveSingleProductToDatabase(cloned);
     showToast(`"${prod.name}" সফলভাবে কপি করা হয়েছে!`);
     triggerGlobalSuccessModal({
       title: 'প্রোডাক্ট কপি হয়েছে!',
@@ -408,24 +420,35 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     });
   };
 
-  const handleDeleteProduct = (id: string) => {
-    if (confirm('আপনি কি নিশ্চিত যে এই প্রোডাক্টটি মুছে ফেলতে চান?')) {
-      const updated = productsList.filter((p) => p.id !== id);
-      setProductsList(updated);
-      setSelectedProductIds((prev) => prev.filter((item) => item !== id));
-      try {
-        localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new Event('products-updated'));
-      } catch {}
-      saveProductsToDatabase(updated);
-      fetch(`/api/products/${id}`, { method: 'DELETE' });
-      showToast('প্রোডাক্ট সফলভাবে মুছে ফেলা হয়েছে!');
-      triggerGlobalSuccessModal({
-        title: 'প্রোডাক্ট মুছে ফেলা হয়েছে!',
-        message: 'নির্বাচিত প্রোডাক্টটি সফলভাবে ডাটাবেজ ও ওয়েবসাইট থেকে চিরতরে মুছে ফেলা হয়েছে।',
-      });
-    }
+  // Open confirmation modal for single delete
+  const handleDeleteProduct = (prod: AdminProductRow) => {
+    setProductToDelete(prod);
+  };
+
+  // Confirm single product delete
+  const confirmDeleteProduct = () => {
+    if (!productToDelete) return;
+    const id = productToDelete.id;
+    const prodName = productToDelete.name;
+    const updated = productsList.filter((p) => String(p.id) !== String(id));
+    setProductsList(updated);
+    setSelectedProductIds((prev) => prev.filter((item) => String(item) !== String(id)));
+    setProductToDelete(null);
+
+    try {
+      localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('products-updated'));
+    } catch {}
+
+    saveProductsToDatabase(updated);
+    deleteProductFromDatabase(id);
+
+    showToast(`"${prodName}" সফলভাবে মুছে ফেলা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'প্রোডাক্ট মুছে ফেলা হয়েছে!',
+      message: `"${prodName}" প্রোডাক্টটি সফলভাবে ডাটাবেজ ও ওয়েবসাইট থেকে চিরতরে মুছে ফেলা হয়েছে।`,
+    });
   };
 
   // Bulk Selection Handlers
@@ -456,7 +479,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     } catch {}
     saveProductsToDatabase(updated);
     idsToDelete.forEach((id) => {
-      fetch(`/api/products/${id}`, { method: 'DELETE' });
+      deleteProductFromDatabase(id);
     });
     showToast(`${count} টি প্রোডাক্ট সফলভাবে ডিলিট করা হয়েছে!`);
     triggerGlobalSuccessModal({
@@ -467,9 +490,17 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
 
   const handleSaveProduct = (savedProd: AdminProductRow) => {
     if (editingProduct) {
-      const updated = productsList.map((p) => (p.id === savedProd.id ? savedProd : p));
+      const updated = productsList.map((p) =>
+        String(p.id) === String(savedProd.id) ? { ...p, ...savedProd } : p
+      );
       setProductsList(updated);
+      try {
+        localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('products-updated'));
+      } catch {}
       saveProductsToDatabase(updated);
+      saveSingleProductToDatabase(savedProd);
       setEditingProduct(null);
       showToast(`প্রোডাক্ট "${savedProd.name}" সফলভাবে আপডেট করা হয়েছে!`);
       const modalInfo = {
@@ -486,7 +517,13 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       };
       const updated = [newProd, ...productsList];
       setProductsList(updated);
+      try {
+        localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('products-updated'));
+      } catch {}
       saveProductsToDatabase(updated);
+      saveSingleProductToDatabase(newProd);
       setIsAddModalOpen(false);
       showToast(`নতুন প্রোডাক্ট "${newProd.name}" সফলভাবে যুক্ত হয়েছে!`);
       const modalInfo = {
@@ -863,7 +900,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
 
                           {/* Delete */}
                           <button
-                            onClick={() => handleDeleteProduct(p.id)}
+                            onClick={() => handleDeleteProduct(p)}
                             className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                             title="Delete Product"
                           >
@@ -929,6 +966,60 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL: SINGLE PRODUCT DELETE CONFIRMATION                */}
+      {/* ========================================================= */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-[#990000] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0" />
+                <h3 className="text-sm font-bold">প্রোডাক্ট মুছে ফেলার নিশ্চিতকরণ</h3>
+              </div>
+              <button
+                onClick={() => setProductToDelete(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg text-slate-700 space-y-1.5">
+                <p className="font-bold text-red-900 text-sm">
+                  আপনি কি নিশ্চিত যে এই প্রোডাক্টটি মুছে ফেলতে চান?
+                </p>
+                <p className="font-semibold text-slate-800 text-xs">
+                  নাম: "{productToDelete.name}"
+                </p>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  এটি ডাটাবেজ এবং স্টোরফ্রন্ট থেকে চিরতরে মুছে যাবে।
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setProductToDelete(null)}
+                  className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-100 font-bold transition-colors cursor-pointer"
+                >
+                  বাতিল (Cancel)
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteProduct}
+                  className="px-4 py-2 bg-[#990000] hover:bg-[#800000] text-white rounded font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>হ্যাঁ, মুছে ফেলুন</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* MODAL: BULK DELETE CONFIRMATION                           */}

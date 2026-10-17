@@ -49,6 +49,20 @@ export const fetchProductsFromDatabase = async () => {
   return null;
 };
 
+export const saveSingleProductToDatabase = async (product: any) => {
+  try {
+    const res = await fetch('/api/products/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(product),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to save single product to server database', e);
+    return false;
+  }
+};
+
 export const saveProductsToDatabase = async (products: any[]) => {
   try {
     const res = await fetch('/api/products/sync', {

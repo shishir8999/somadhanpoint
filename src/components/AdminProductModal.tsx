@@ -407,9 +407,22 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    if (!name || !name.trim()) {
+      alert('দয়া করে প্রোডাক্টের নাম লিখুন!');
+      setActiveTab('basic');
+      return;
+    }
+
+    const numPrice = Number(price) || 0;
+    if (numPrice <= 0) {
+      alert('দয়া করে প্রোডাক্টের সঠিক বিক্রয় মূল্য (Price) নির্ধারণ করুন!');
+      setActiveTab('price');
+      return;
+    }
 
     const numStock = typeof stock === 'number' ? stock : parseInt(String(stock)) || 0;
     const finalStockColor = numStock > 50 ? 'green' : numStock > 0 ? 'yellow' : 'red';
@@ -555,7 +568,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
         </div>
 
         {/* 3. Modal Form Body (Scrollable) */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs text-slate-800">
+        <form onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs text-slate-800">
           {/* ============================================================== */}
           {/* SECTION: THUMBNAIL & GALLERY UPLOAD (Matches Screenshot)       */}
           {/* ============================================================== */}

@@ -19,7 +19,11 @@ import {
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
-import { fetchCategoriesFromDatabase, saveCategoriesToDatabase } from '../utils/apiSync';
+import {
+  fetchCategoriesFromDatabase,
+  saveCategoriesToDatabase,
+  deleteCategoryFromDatabase,
+} from '../utils/apiSync';
 
 export interface SubCategoryItem {
   id: string;
@@ -179,6 +183,8 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
   const [editingCategory, setEditingCategory] = useState<CategoryRow | null>(null);
   const [viewingCategory, setViewingCategory] = useState<CategoryRow | null>(null);
   const [subcategoryManagingCategory, setSubcategoryManagingCategory] = useState<CategoryRow | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryRow | null>(null);
+  const isInitialMount = useRef(true);
 
   // New Category Form State
   const [newCatName, setNewCatName] = useState('');
@@ -224,9 +230,14 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
 
   // Sync categoriesList to localStorage and server database
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     try {
       localStorage.setItem('ummah_admin_categories_list', JSON.stringify(categoriesList));
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('categories-updated'));
     } catch (e) {
       console.error('Failed to save categories to localStorage', e);
     }
@@ -324,24 +335,33 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
     setEditingCategory(null);
   };
 
-  // 3. Delete Category Handler
-  const handleDeleteCategory = (id: string, name: string) => {
-    if (confirm(`আপনি কি সত্যিই "${name}" ক্যাটাগরিটি মুছে ফেলতে চান?`)) {
-      const updated = categoriesList.filter((c) => c.id !== id);
-      setCategoriesList(updated);
-      try {
-        localStorage.setItem('ummah_admin_categories_list', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new Event('categories-updated'));
-      } catch {}
-      saveCategoriesToDatabase(updated);
-      fetch(`/api/categories/${id}`, { method: 'DELETE' });
-      showToast(`"${name}" ক্যাটাগরি সফলভাবে মুছে ফেলা হয়েছে!`);
-      triggerGlobalSuccessModal({
-        title: 'ক্যাটাগরি মুছে ফেলা হয়েছে!',
-        message: `"${name}" ক্যাটাগরি এবং এর উপ-ক্যাটাগরি ডাটাবেজ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`,
-      });
-    }
+  // 3. Delete Category Handlers
+  const handleDeleteCategory = (cat: CategoryRow) => {
+    setCategoryToDelete(cat);
+  };
+
+  const confirmDeleteCategory = () => {
+    if (!categoryToDelete) return;
+    const id = categoryToDelete.id;
+    const name = categoryToDelete.name;
+    const updated = categoriesList.filter((c) => String(c.id) !== String(id));
+    setCategoriesList(updated);
+    setCategoryToDelete(null);
+
+    try {
+      localStorage.setItem('ummah_admin_categories_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('categories-updated'));
+    } catch {}
+
+    saveCategoriesToDatabase(updated);
+    deleteCategoryFromDatabase(id);
+
+    showToast(`"${name}" ক্যাটাগরি সফলভাবে মুছে ফেলা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ক্যাটাগরি মুছে ফেলা হয়েছে!',
+      message: `"${name}" ক্যাটাগরি এবং এর উপ-ক্যাটাগরি ডাটাবেজ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`,
+    });
   };
 
   // 4. Sub-category Direct Management Handlers
@@ -580,7 +600,7 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
 
                             {/* Delete Button */}
                             <button
-                              onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                              onClick={() => handleDeleteCategory(cat)}
                               className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -597,6 +617,60 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL 0: CONFIRM DELETE CATEGORY                          */}
+      {/* ========================================================= */}
+      {categoryToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-[#990000] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0" />
+                <h3 className="text-sm font-bold">ক্যাটাগরি মুছে ফেলার নিশ্চিতকরণ</h3>
+              </div>
+              <button
+                onClick={() => setCategoryToDelete(null)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg text-slate-700 space-y-1.5">
+                <p className="font-bold text-red-900 text-sm">
+                  আপনি কি নিশ্চিত যে এই ক্যাটাগরিটি মুছে ফেলতে চান?
+                </p>
+                <p className="font-semibold text-slate-800 text-xs">
+                  ক্যাটাগরির নাম: "{categoryToDelete.name}"
+                </p>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  এটি ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে এবং এর সাব-ক্যাটাগরিগুলোও রিমুভ হবে।
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCategoryToDelete(null)}
+                  className="px-4 py-2 border border-slate-300 rounded text-slate-700 hover:bg-slate-100 font-bold transition-colors cursor-pointer"
+                >
+                  বাতিল (Cancel)
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteCategory}
+                  className="px-4 py-2 bg-[#990000] hover:bg-[#800000] text-white rounded font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>হ্যাঁ, মুছে ফেলুন</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* MODAL 1: ADD CATEGORY WITH SUB-CATEGORIES                 */}
