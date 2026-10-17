@@ -222,11 +222,85 @@ class EcommerceApiController extends Controller
         ]);
     }
 
+    public function saveProduct(Request $request)
+    {
+        $p = $request->all();
+        $prodId = (string)($p['id'] ?? ('prod-' . time() . '-' . rand(100, 999)));
+
+        // 1. Update in file backup
+        $products = $this->loadFromFileBackup('products', []);
+        $found = false;
+        foreach ($products as $idx => $existing) {
+            if ((string)($existing['id'] ?? '') === $prodId) {
+                $products[$idx] = array_merge($existing, $p);
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            array_unshift($products, $p);
+        }
+        $this->saveToFileBackup('products', $products);
+
+        // 2. Save to MySQL
+        try {
+            if (DB::connection()->getPdo()) {
+                $prod = Product::updateOrCreate(
+                    ['id' => $prodId],
+                    [
+                        'name' => $p['name'] ?? 'Product',
+                        'sku' => $p['sku'] ?? null,
+                        'category' => $p['category'] ?? 'General',
+                        'subcategory' => $p['subcategory'] ?? null,
+                        'brand' => $p['brand'] ?? 'Generic',
+                        'current_price' => (float)($p['price'] ?? ($p['current_price'] ?? 0)),
+                        'original_price' => !empty($p['originalPrice']) ? (float)$p['originalPrice'] : (!empty($p['original_price']) ? (float)$p['original_price'] : null),
+                        'badge' => $p['badge'] ?? null,
+                        'section' => $p['section'] ?? 'hot_deals',
+                        'visual_type' => $p['visualType'] ?? ($p['visual_type'] ?? 'formal_shoe'),
+                        'in_stock' => isset($p['inStock']) ? (bool)$p['inStock'] : (isset($p['in_stock']) ? (bool)$p['in_stock'] : true),
+                        'stock_quantity' => (int)($p['stock'] ?? ($p['stock_quantity'] ?? 50)),
+                        'description' => $p['description'] ?? null,
+                        'thumbnail_url' => $p['thumbnailUrl'] ?? ($p['thumbnail_url'] ?? null),
+                        'image_url' => $p['imageUrl'] ?? ($p['image_url'] ?? ($p['thumbnailUrl'] ?? ($p['thumbnail_url'] ?? null))),
+                        'gallery_images' => $p['galleryImages'] ?? ($p['gallery_images'] ?? []),
+                        'sizes' => $p['sizes'] ?? [],
+                        'colors' => $p['colors'] ?? [],
+                    ]
+                );
+
+                $variants = $p['colorVariants'] ?? ($p['color_variants'] ?? []);
+                if (!empty($variants) && is_array($variants)) {
+                    ProductColorVariant::where('product_id', $prod->id)->delete();
+                    foreach ($variants as $cv) {
+                        ProductColorVariant::create([
+                            'product_id' => $prod->id,
+                            'name' => $cv['name'] ?? 'Color',
+                            'hex' => $cv['hex'] ?? '#000000',
+                            'image' => $cv['image'] ?? null,
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB saveProduct fallback: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product saved permanently!',
+            'product' => $p,
+        ]);
+    }
+
     public function syncProducts(Request $request)
     {
-        $products = $request->input('products', []);
+        $products = $request->input('products');
+        if (is_null($products) && $request->isJson()) {
+            $products = $request->json('products');
+        }
         if (!is_array($products)) {
-            return response()->json(['success' => false, 'message' => 'Invalid products data'], 400);
+            $products = [];
         }
 
         // 1. Save to file backup

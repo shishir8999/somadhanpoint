@@ -19,6 +19,7 @@ Route::post('/settings', [EcommerceApiController::class, 'saveSettings']);
 
 // 2. Products
 Route::get('/products', [EcommerceApiController::class, 'getProducts']);
+Route::post('/products/save', [EcommerceApiController::class, 'saveProduct']);
 Route::post('/products/sync', [EcommerceApiController::class, 'syncProducts']);
 Route::delete('/products/{id}', [EcommerceApiController::class, 'deleteProduct']);
 
