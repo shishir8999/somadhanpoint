@@ -1,0 +1,6 @@
+{
+  "name": "Ummah BD - Trust In Quality",
+  "description": "উম্মাহ বিডি - বাংলাদেশের বিশ্বস্ত অনলাইন শপ। লেদার স্যান্ডেল, ওয়ালেট, অর্গানিক ফুড ও ফ্যাশন সামগ্রী।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
