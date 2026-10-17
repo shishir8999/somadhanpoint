@@ -19,6 +19,7 @@ import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { AdminProductModal } from './AdminProductModal';
 import { SuccessSaveModal } from './SuccessSaveModal';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 import { ColorVariant } from '../types';
 import { fetchProductsFromDatabase, saveProductsToDatabase } from '../utils/apiSync';
 
@@ -427,30 +428,34 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
 
   const handleSaveProduct = (savedProd: AdminProductRow) => {
     if (editingProduct) {
-      setProductsList((prev) =>
-        prev.map((p) => (p.id === savedProd.id ? savedProd : p))
-      );
+      const updated = productsList.map((p) => (p.id === savedProd.id ? savedProd : p));
+      setProductsList(updated);
+      saveProductsToDatabase(updated);
       setEditingProduct(null);
       showToast(`প্রোডাক্ট "${savedProd.name}" সফলভাবে আপডেট করা হয়েছে!`);
-      setSuccessModal({
-        isOpen: true,
+      const modalInfo = {
         title: 'প্রোডাক্ট আপডেট হয়েছে!',
         message: `প্রোডাক্ট "${savedProd.name}" এর সকল তথ্য সফলভাবে সংরক্ষিত ও ওয়েবসাইটে আপডেট করা হয়েছে।`,
-      });
+      };
+      setSuccessModal({ isOpen: true, ...modalInfo });
+      triggerGlobalSuccessModal(modalInfo);
     } else {
       const newProd: AdminProductRow = {
         ...savedProd,
         id: `prod-${Date.now()}`,
         sl: productsList.length + 1,
       };
-      setProductsList((prev) => [newProd, ...prev]);
+      const updated = [newProd, ...productsList];
+      setProductsList(updated);
+      saveProductsToDatabase(updated);
       setIsAddModalOpen(false);
       showToast(`নতুন প্রোডাক্ট "${newProd.name}" সফলভাবে যুক্ত হয়েছে!`);
-      setSuccessModal({
-        isOpen: true,
+      const modalInfo = {
         title: 'নতুন প্রোডাক্ট যুক্ত হয়েছে!',
         message: `প্রোডাক্ট "${newProd.name}" সফলভাবে ক্যাটালগে যুক্ত হয়েছে এবং দোকানে লাইভ করা হয়েছে।`,
-      });
+      };
+      setSuccessModal({ isOpen: true, ...modalInfo });
+      triggerGlobalSuccessModal(modalInfo);
     }
   };
 

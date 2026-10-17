@@ -55,6 +55,8 @@ import {
 } from '../utils/pixel';
 import { getOrderSettings, saveOrderSettings, OrderSettings } from '../utils/orderSettings';
 import { SuccessSaveModal } from './SuccessSaveModal';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
+import { saveSettingsToDatabase } from '../utils/apiSync';
 
 interface SettingsAdminPageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -97,6 +99,11 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   const triggerSuccessPopup = (title: string, message: string, subMessage?: string) => {
     setSuccessModal({
       isOpen: true,
+      title,
+      message,
+      subMessage,
+    });
+    triggerGlobalSuccessModal({
       title,
       message,
       subMessage,
@@ -169,6 +176,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       setFooterLogoUrl(result);
       updateSettings({ footerLogoUrl: result });
       showToast('ফুটার লোগো সফলভাবে লোড ও সেভ হয়েছে!');
+      triggerSuccessPopup('ফুটার লোগো সেভ হয়েছে!', 'ফুটার লোগো সফলভাবে আপলোড ও ডাটাবেজে সংরক্ষণ করা হয়েছে।');
     };
     reader.readAsDataURL(file);
   };
@@ -202,6 +210,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       setLogoUrl(result);
       updateSettings({ logoUrl: result });
       showToast('লোগো সফলভাবে লোড ও সেভ হয়েছে!');
+      triggerSuccessPopup('লোগো সফলভাবে সেভ হয়েছে!', 'আপনার স্টোরের নতুন লোগো সফলভাবে আপলোড ও ডাটাবেজে সংরক্ষণ করা হয়েছে।');
     };
     reader.readAsDataURL(file);
   };
@@ -216,6 +225,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     setLogoUrlInput('');
     updateSettings({ logoUrl: cleanUrl });
     showToast('লোগো URL যুক্ত ও সেভ হয়েছে!');
+    triggerSuccessPopup('লোগো URL সেভ হয়েছে!', 'নতুন লোগো লিঙ্ক সফলভাবে সংরক্ষণ করা হয়েছে।');
   };
 
   const handleRemoveLogo = () => {
@@ -295,6 +305,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       setBanners(updated);
       updateSettings({ banners: updated });
       showToast('নতুন ব্যানার ছবি সফলভাবে আপলোড করা হয়েছে!');
+      triggerSuccessPopup('ব্যানার ছবি সেভ হয়েছে!', 'নতুন ব্যানার সফলভাবে আপলোড ও ডাটাবেজে সংরক্ষণ করা হয়েছে।');
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -318,6 +329,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       setBanners(updated);
       updateSettings({ banners: updated });
       showToast('ব্যানার ছবি সফলভাবে পরিবর্তন করা হয়েছে!');
+      triggerSuccessPopup('ব্যানার পরিবর্তন হয়েছে!', 'ব্যানার ছবি পরিবর্তন ও ডাটাবেজে সংরক্ষণ করা হয়েছে।');
       setReplacingBannerId(null);
     };
     reader.readAsDataURL(file);
@@ -626,6 +638,23 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     showToast(`টেস্ট ইভেন্ট '${eventName}' সফলভাবে ফায়ার করা হয়েছে!`);
   };
 
+  const handleUniversalSave = () => {
+    if (activeTab === 'web') {
+      handleSaveWeb();
+    } else if (activeTab === 'order') {
+      handleSaveOrderSettings();
+    } else if (activeTab === 'page') {
+      handleSavePageContent();
+    } else if (activeTab === 'pixel') {
+      handleSavePixels();
+    } else {
+      triggerSuccessPopup(
+        'কুপন সেটিংস সেভ হয়েছে!',
+        'সকল কুপন ও ডিসকাউন্ট সফলভাবে ডাটাবেজে সংরক্ষণ করা হয়েছে।'
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-[#f8fafc] text-slate-800 font-sans">
       {/* 1. Left Unified Sidebar */}
@@ -637,66 +666,78 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
 
       {/* 2. Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Header Tabs matching Screenshots */}
-        <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center gap-6 sticky top-0 z-10 overflow-x-auto text-xs font-semibold">
-          <button
-            onClick={() => setActiveTab('web')}
-            className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
-              activeTab === 'web'
-                ? 'text-[#990000] border-[#990000] font-bold'
-                : 'text-slate-500 border-transparent hover:text-slate-800'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Web Settings</span>
-          </button>
+        {/* Top Header Tabs & Quick Save Button */}
+        <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+          <div className="flex items-center gap-6 overflow-x-auto text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab('web')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'web'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Web Settings</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('order')}
-            className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
-              activeTab === 'order'
-                ? 'text-[#990000] border-[#990000] font-bold'
-                : 'text-slate-500 border-transparent hover:text-slate-800'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Order Settings</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('order')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'order'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Order Settings</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('coupons')}
-            className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
-              activeTab === 'coupons'
-                ? 'text-[#990000] border-[#990000] font-bold'
-                : 'text-slate-500 border-transparent hover:text-slate-800'
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>Coupons</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('coupons')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'coupons'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>Coupons</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('page')}
-            className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
-              activeTab === 'page'
-                ? 'text-[#990000] border-[#990000] font-bold'
-                : 'text-slate-500 border-transparent hover:text-slate-800'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Page Settings</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('page')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'page'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Page Settings</span>
+            </button>
 
+            <button
+              onClick={() => setActiveTab('pixel')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'pixel'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Pixel Settings</span>
+            </button>
+          </div>
+
+          {/* Quick Header Save Button */}
           <button
-            onClick={() => setActiveTab('pixel')}
-            className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
-              activeTab === 'pixel'
-                ? 'text-[#990000] border-[#990000] font-bold'
-                : 'text-slate-500 border-transparent hover:text-slate-800'
-            }`}
+            type="button"
+            onClick={handleUniversalSave}
+            className="bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0 ml-4"
           >
-            <Target className="w-3.5 h-3.5" />
-            <span>Pixel Settings</span>
+            <Save className="w-4 h-4" />
+            <span>সেভ করুন (Save)</span>
           </button>
         </div>
 
@@ -2618,6 +2659,19 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Floating Quick Save Button on Screen */}
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={handleUniversalSave}
+            className="bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold px-5 py-3 rounded-full flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105 active:scale-95 border-2 border-white"
+            title="সকল পরিবর্তন সংরক্ষণ করুন"
+          >
+            <Save className="w-4 h-4" />
+            <span>সেভ করুন (Save Settings)</span>
+          </button>
         </div>
       </main>
 
