@@ -32,7 +32,7 @@ export interface StoreSettings {
 }
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
-  siteName: 'EcomByte',
+  siteName: 'Somadhan Point',
   slogan: 'বাংলাদেশের বিশ্বস্ত অনলাইন শপ',
   description: 'সারাদেশে ক্যাশ অন ডেলিভারি (৪৮ থেকে ৭২ ঘণ্টার মধ্যে নিশ্চিত ডেলিভারি) হটলাইনঃ 01982708789',
   primaryColor: '#ffffff',
@@ -91,6 +91,10 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       const saved = localStorage.getItem('ecom_store_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
+        // Automatically migrate to Somadhan Point and clean up old EcomByte
+        if (!parsed.siteName || parsed.siteName === 'EcomByte' || parsed.siteName.toLowerCase().includes('ecombyte')) {
+          parsed.siteName = 'Somadhan Point';
+        }
         // Automatically migrate to user's phone, email and address
         if (parsed.phone1 === '01891614300' || !parsed.phone1) {
           parsed.phone1 = '01982708789';

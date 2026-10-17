@@ -95,17 +95,19 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
               </>
             ) : (
             <>
-              <div className="w-9 h-9 rounded-lg bg-[#990000] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-                <svg viewBox="0 0 40 40" className="w-5 h-5 fill-white">
-                  <path d="M20 4 L34 32 L26 32 L22 22 L14 22 L14 16 L25 16 L20 4 Z" />
-                  <path d="M12 24 L6 36 L16 36 L18 30 Z" fill="#fecaca" />
-                </svg>
+              <div className="w-9 h-9 rounded-lg bg-[#990000] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform font-black text-sm tracking-wider">
+                SP
               </div>
               <div className="flex flex-col">
                 <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 font-sans leading-tight">
-                  {settings.siteName.toLowerCase().includes('byte') ? (
+                  {settings.siteName.toLowerCase().includes('point') ? (
                     <>
-                      {settings.siteName.replace(/byte/i, '')}
+                      {settings.siteName.replace(/point/i, '').trim()}{' '}
+                      <span className="italic text-[#990000] font-serif">Point</span>
+                    </>
+                  ) : settings.siteName.toLowerCase().includes('byte') ? (
+                    <>
+                      {settings.siteName.replace(/byte/i, '').trim()}
                       <span className="italic text-[#990000] font-serif">Byte</span>
                     </>
                   ) : (

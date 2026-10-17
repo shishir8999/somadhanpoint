@@ -86,7 +86,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   // -------------------------------------------------------------
   // TAB 1: WEB SETTINGS (Connected to StoreSettingsContext)
   // -------------------------------------------------------------
-  const [siteName, setSiteName] = useState(settings.siteName || 'EcomByte');
+  const [siteName, setSiteName] = useState(settings.siteName || 'Somadhan Point');
   const [slogan, setSlogan] = useState(settings.slogan || 'বাংলাদেশের বিশ্বস্ত অনলাইন শপ');
   const [description, setDescription] = useState(
     settings.description ||
@@ -1760,7 +1760,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                             {showLogoText && (
                               <div className="flex flex-col">
                                 <span className="text-xs font-black text-slate-900 leading-tight">
-                                  {siteName || 'EcomByte'}
+                                  {siteName || 'Somadhan Point'}
                                 </span>
                                 <span className="text-[9px] text-slate-500 truncate max-w-[140px]">
                                   {slogan || 'বিশ্বস্ত অনলাইন শপ'}
@@ -1771,11 +1771,11 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                         ) : (
                           <>
                             <div className="w-8 h-8 rounded bg-[#990000] flex items-center justify-center text-white text-xs font-bold shadow-2xs shrink-0">
-                              EB
+                              SP
                             </div>
                             <div className="flex flex-col">
                               <span className="text-xs font-black text-slate-900 leading-tight">
-                                {siteName || 'EcomByte'}
+                                {siteName || 'Somadhan Point'}
                               </span>
                               <span className="text-[9px] text-slate-500 truncate max-w-[140px]">
                                 {slogan || 'বিশ্বস্ত অনলাইন শপ'}
@@ -1993,11 +1993,11 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                                 />
                               </div>
                             ) : (
-                              <span className="text-white text-xs font-bold">EB</span>
+                              <span className="text-white text-xs font-bold">SP</span>
                             )}
                             {showLogoText && (
                               <span className="text-white text-xs font-bold truncate max-w-[80px]">
-                                {siteName || 'EcomByte'}
+                                {siteName || 'Somadhan Point'}
                               </span>
                             )}
                           </div>

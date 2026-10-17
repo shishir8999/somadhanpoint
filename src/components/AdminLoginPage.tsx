@@ -85,7 +85,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               <ShieldCheck className="w-8 h-8 text-amber-300" />
             </div>
             <h1 className="text-xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-              <span>{settings.siteName || 'EcomByte'}</span>
+              <span>{settings.siteName || 'Somadhan Point'}</span>
               <span className="text-[11px] bg-black/30 font-bold px-2 py-0.5 rounded-full text-amber-300 border border-white/10 uppercase tracking-widest">
                 Super Admin
               </span>
@@ -116,7 +116,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   required
                   value={emailOrPhone}
                   onChange={(e) => setEmailOrPhone(e.target.value)}
-                  placeholder="admin@ecombyte.com বা 01982708789"
+                  placeholder="admin@somadhanpoint.com বা 01982708789"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-[#990000] focus:ring-1 focus:ring-[#990000] transition-colors font-mono"
                 />
               </div>
