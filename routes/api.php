@@ -1,36 +1,46 @@
 <?php
 
-use App\Http\Controllers\Api\AdminApiController;
-use App\Http\Controllers\Api\AiChatController;
-use App\Http\Controllers\Api\AuthSwitchController;
-use App\Http\Controllers\Api\PaymentApiController;
-use App\Http\Controllers\Api\ResellerApiController;
-use App\Http\Controllers\Api\VaultApiController;
+use App\Http\Controllers\Api\EcommerceApiController;
+use App\Http\Controllers\EcommerceController;
 use Illuminate\Support\Facades\Route;
 
-// AI Chat Endpoint (replaces server.ts /api/ai/chat)
-Route::post('/ai/chat', [AiChatController::class, 'chat']);
+/*
+|--------------------------------------------------------------------------
+| API Routes for Somadhan Point E-Commerce
+|--------------------------------------------------------------------------
+|
+| Permanent Database & File Persistent Endpoints
+|
+*/
 
-// Payment Verification Endpoint (replaces server.ts /api/payments/verify)
-Route::post('/payments/verify', [PaymentApiController::class, 'verify']);
+// 1. Store Settings (Permanent Save & Load)
+Route::get('/settings', [EcommerceApiController::class, 'getSettings']);
+Route::post('/settings', [EcommerceApiController::class, 'saveSettings']);
 
-// Admin Endpoints
-Route::post('/settings', [AdminApiController::class, 'saveSettings']);
-Route::post('/plans', [AdminApiController::class, 'savePlan']);
-Route::delete('/plans/{id}', [AdminApiController::class, 'deletePlan']);
-Route::post('/orders/{id}/status', [AdminApiController::class, 'updateOrderStatus']);
-Route::post('/users/{id}', [AdminApiController::class, 'updateUser']);
+// 2. Products
+Route::get('/products', [EcommerceApiController::class, 'getProducts']);
+Route::post('/products/sync', [EcommerceApiController::class, 'syncProducts']);
+Route::delete('/products/{id}', [EcommerceApiController::class, 'deleteProduct']);
 
-// Reseller Endpoints
-Route::post('/reseller/sale', [ResellerApiController::class, 'createSale']);
+// 3. Categories
+Route::get('/categories', [EcommerceApiController::class, 'getCategories']);
+Route::post('/categories/sync', [EcommerceApiController::class, 'syncCategories']);
 
-// Vault Endpoints
-Route::get('/vault', [VaultApiController::class, 'index']);
-Route::post('/vault/upload', [VaultApiController::class, 'upload']);
-Route::delete('/vault/{id}', [VaultApiController::class, 'destroy']);
+// 4. Brands
+Route::get('/brands', [EcommerceApiController::class, 'getBrands']);
+Route::post('/brands/sync', [EcommerceApiController::class, 'syncBrands']);
 
-// Auth & Switch User Endpoints
-Route::post('/auth/switch-user', [AuthSwitchController::class, 'switchUser']);
-Route::post('/auth/login', [AuthSwitchController::class, 'login']);
-Route::post('/auth/register', [AuthSwitchController::class, 'register']);
-Route::post('/auth/logout', [AuthSwitchController::class, 'logout']);
+// 5. Orders & Checkout
+Route::get('/orders', [EcommerceApiController::class, 'getOrders']);
+Route::post('/orders/sync', [EcommerceApiController::class, 'syncOrders']);
+Route::post('/orders/place', [EcommerceController::class, 'placeOrder']);
+Route::get('/orders/track/{query}', [EcommerceController::class, 'trackOrder']);
+Route::post('/courier/dispatch', [EcommerceController::class, 'dispatchCourier']);
+
+// 6. Order Settings
+Route::get('/order-settings', [EcommerceApiController::class, 'getOrderSettings']);
+Route::post('/order-settings', [EcommerceApiController::class, 'saveOrderSettings']);
+
+// 7. Custom Pages
+Route::get('/custom-pages', [EcommerceApiController::class, 'getCustomPages']);
+Route::post('/custom-pages/sync', [EcommerceApiController::class, 'syncCustomPages']);
