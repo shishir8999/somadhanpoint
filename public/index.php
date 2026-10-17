@@ -5,16 +5,27 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
+// 1. If vendor exists, run full Laravel
+if (file_exists(__DIR__.'/../vendor/autoload.php')) {
+    if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+        require $maintenance;
+    }
+    require __DIR__.'/../vendor/autoload.php';
+    /** @var Application $app */
+    $app = require_once __DIR__.'/../bootstrap/app.php';
+    $app->handleRequest(Request::capture());
+    exit;
 }
 
-// Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
+// 2. Safe Fallback: Serve the compiled React application directly without 500 error!
+if (file_exists(__DIR__ . '/index.html')) {
+    readfile(__DIR__ . '/index.html');
+    exit;
+}
 
-// Bootstrap Laravel and handle the request...
-/** @var Application $app */
-$app = require_once __DIR__.'/../bootstrap/app.php';
+if (file_exists(__DIR__ . '/../index.html')) {
+    readfile(__DIR__ . '/../index.html');
+    exit;
+}
 
-$app->handleRequest(Request::capture());
+echo "<h1>Somadhan Point is Loading...</h1>";
