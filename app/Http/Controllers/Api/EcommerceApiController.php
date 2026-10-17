@@ -245,25 +245,26 @@ class EcommerceApiController extends Controller
                             'category' => $p['category'] ?? 'General',
                             'subcategory' => $p['subcategory'] ?? null,
                             'brand' => $p['brand'] ?? 'Generic',
-                            'current_price' => (float)($p['price'] ?? 0),
-                            'original_price' => !empty($p['originalPrice']) ? (float)$p['originalPrice'] : null,
+                            'current_price' => (float)($p['price'] ?? ($p['current_price'] ?? 0)),
+                            'original_price' => !empty($p['originalPrice']) ? (float)$p['originalPrice'] : (!empty($p['original_price']) ? (float)$p['original_price'] : null),
                             'badge' => $p['badge'] ?? null,
                             'section' => $p['section'] ?? 'hot_deals',
-                            'visual_type' => $p['visualType'] ?? 'formal_shoe',
-                            'in_stock' => isset($p['inStock']) ? (bool)$p['inStock'] : true,
-                            'stock_quantity' => (int)($p['stock'] ?? 50),
+                            'visual_type' => $p['visualType'] ?? ($p['visual_type'] ?? 'formal_shoe'),
+                            'in_stock' => isset($p['inStock']) ? (bool)$p['inStock'] : (isset($p['in_stock']) ? (bool)$p['in_stock'] : true),
+                            'stock_quantity' => (int)($p['stock'] ?? ($p['stock_quantity'] ?? 50)),
                             'description' => $p['description'] ?? null,
-                            'thumbnail_url' => $p['thumbnailUrl'] ?? null,
-                            'image_url' => $p['imageUrl'] ?? ($p['thumbnailUrl'] ?? null),
-                            'gallery_images' => $p['galleryImages'] ?? [],
+                            'thumbnail_url' => $p['thumbnailUrl'] ?? ($p['thumbnail_url'] ?? null),
+                            'image_url' => $p['imageUrl'] ?? ($p['image_url'] ?? ($p['thumbnailUrl'] ?? ($p['thumbnail_url'] ?? null))),
+                            'gallery_images' => $p['galleryImages'] ?? ($p['gallery_images'] ?? []),
                             'sizes' => $p['sizes'] ?? [],
                             'colors' => $p['colors'] ?? [],
                         ]
                     );
 
-                    if (!empty($p['colorVariants']) && is_array($p['colorVariants'])) {
+                    $variants = $p['colorVariants'] ?? ($p['color_variants'] ?? []);
+                    if (!empty($variants) && is_array($variants)) {
                         ProductColorVariant::where('product_id', $prod->id)->delete();
-                        foreach ($p['colorVariants'] as $cv) {
+                        foreach ($variants as $cv) {
                             ProductColorVariant::create([
                                 'product_id' => $prod->id,
                                 'name' => $cv['name'] ?? 'Color',
