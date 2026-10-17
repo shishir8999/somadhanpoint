@@ -9,6 +9,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface ReviewRow {
   id: string;
@@ -117,6 +118,10 @@ export const AllReviewsPage: React.FC<AllReviewsPageProps> = ({
     setNewReviewerPhone('');
     setNewComment('');
     showToast(`নতুন রিভিউ সফলভাবে যুক্ত হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'রিভিউ যুক্ত হয়েছে!',
+      message: `গ্রাহক "${newRev.reviewerName}" এর ৫-স্টার রিভিউ সফলভাবে সিস্টেমে যুক্ত হয়েছে।`,
+    });
   };
 
   const handleDeleteReview = (id: string, name: string) => {

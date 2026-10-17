@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface SubCategoryItem {
   id: string;
@@ -268,6 +269,10 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
     setNewCatSubcategories([]);
     setTempSubcatInput('');
     showToast(`নতুন ক্যাটাগরি "${newCat.name}" তৈরি হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ক্যাটাগরি তৈরি হয়েছে!',
+      message: `নতুন ক্যাটাগরি "${newCat.name}" সফলভাবে সংরক্ষিত ও সাইটে সক্রিয় করা হয়েছে।`,
+    });
   };
 
   // Add subcategory chip in new category form
@@ -295,6 +300,10 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
       )
     );
     showToast(`ক্যাটাগরি "${editingCategory.name}" আপডেট করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ক্যাটাগরি সেভ হয়েছে!',
+      message: `ক্যাটাগরি "${editingCategory.name}" এর পরিবর্তনসমূহ সফলভাবে সংরক্ষণ করা হয়েছে।`,
+    });
     setEditingCategory(null);
   };
 

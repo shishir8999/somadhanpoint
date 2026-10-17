@@ -9,6 +9,7 @@ import {
   Layers
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface VariantOptionRow {
   id: string;
@@ -83,6 +84,10 @@ export const ProductVariantsPage: React.FC<ProductVariantsPageProps> = ({
     setNewName('');
     setNewValuesString('');
     showToast(`নতুন ভ্যারিয়েন্ট অপশন "${newOption.name}" যুক্ত হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ভ্যারিয়েন্ট তৈরি হয়েছে!',
+      message: `নতুন অপশন "${newOption.name}" সফলভাবে যুক্ত ও সংরক্ষিত হয়েছে।`,
+    });
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -93,6 +98,10 @@ export const ProductVariantsPage: React.FC<ProductVariantsPageProps> = ({
       prev.map((v) => (v.id === editingVariant.id ? editingVariant : v))
     );
     showToast(`ভ্যারিয়েন্ট অপশন "${editingVariant.name}" আপডেট করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ভ্যারিয়েন্ট সেভ হয়েছে!',
+      message: `ভ্যারিয়েন্ট অপশন "${editingVariant.name}" এর মান সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
     setEditingVariant(null);
   };
 

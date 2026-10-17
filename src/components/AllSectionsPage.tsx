@@ -10,6 +10,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface SectionRow {
   id: string;
@@ -106,6 +107,10 @@ export const AllSectionsPage: React.FC<AllSectionsPageProps> = ({
     setIsAddModalOpen(false);
     setNewName('');
     showToast(`নতুন সেকশন "${newSec.name}" যুক্ত হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'সেকশন তৈরি হয়েছে!',
+      message: `নতুন সেকশন "${newSec.name}" সফলভাবে যুক্ত ও সাইটে সক্রিয় করা হয়েছে।`,
+    });
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -116,6 +121,10 @@ export const AllSectionsPage: React.FC<AllSectionsPageProps> = ({
       prev.map((s) => (s.id === editingSection.id ? editingSection : s))
     );
     showToast(`সেকশন "${editingSection.name}" সফলভাবে আপডেট হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'সেকশন সেভ হয়েছে!',
+      message: `সেকশন "${editingSection.name}" এর পরিবর্তনসমূহ সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
     setEditingSection(null);
   };
 

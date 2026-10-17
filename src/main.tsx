@@ -3,11 +3,14 @@ import App from './App.tsx';
 import './index.css';
 import { StoreSettingsProvider } from './context/StoreSettingsContext';
 import { CustomPagesProvider } from './context/CustomPagesContext';
+import { SuccessModalProvider } from './context/SuccessModalContext';
 
 createRoot(document.getElementById('root')!).render(
   <StoreSettingsProvider>
     <CustomPagesProvider>
-      <App />
+      <SuccessModalProvider>
+        <App />
+      </SuccessModalProvider>
     </CustomPagesProvider>
   </StoreSettingsProvider>
 );

@@ -41,6 +41,7 @@ import {
   saveStoredAdminOrders,
   resetStoredAdminOrders,
 } from '../data/mockOrders';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export type { OrderItem };
 
@@ -497,6 +498,10 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
     setNewCustAddress('');
     setNewCustNotes('');
     showToast(`নতুন অর্ডার #${newOrder.orderNumber} সফলভাবে তৈরি করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'অর্ডার সংরক্ষণ হয়েছে!',
+      message: `নতুন অর্ডার #${newOrder.orderNumber} (${newOrder.customerName}) সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
   };
 
   return (
@@ -1454,6 +1459,10 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
                   );
                   setEditingOrder(null);
                   showToast('অর্ডার সফলভাবে আপডেট হয়েছে!');
+                  triggerGlobalSuccessModal({
+                    title: 'অর্ডার আপডেট হয়েছে!',
+                    message: `অর্ডার #${editingOrder.orderNumber} এর বিবরণ সফলভাবে সংরক্ষিত হয়েছে।`,
+                  });
                 }}
                 className="w-1/2 py-2 bg-[#990000] hover:bg-[#800000] text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer"
               >

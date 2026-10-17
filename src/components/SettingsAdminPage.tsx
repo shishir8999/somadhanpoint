@@ -54,6 +54,7 @@ import {
   PixelEventLog,
 } from '../utils/pixel';
 import { getOrderSettings, saveOrderSettings, OrderSettings } from '../utils/orderSettings';
+import { SuccessSaveModal } from './SuccessSaveModal';
 
 interface SettingsAdminPageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -77,10 +78,29 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   const { settings, updateSettings } = useStoreSettings();
   const [activeTab, setActiveTab] = useState<'web' | 'order' | 'coupons' | 'page' | 'pixel'>('web');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    subMessage?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const triggerSuccessPopup = (title: string, message: string, subMessage?: string) => {
+    setSuccessModal({
+      isOpen: true,
+      title,
+      message,
+      subMessage,
+    });
   };
 
   // -------------------------------------------------------------
@@ -237,6 +257,10 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       showLogoText,
     });
     showToast('Web Settings ও লোগো সফলভাবে সংরক্ষিত হয়েছে এবং সাইটের সর্বত্র লাইভ আপডেট হয়েছে!');
+    triggerSuccessPopup(
+      'ওয়েবসাইট সেটিংস সেভ হয়েছে!',
+      'ওয়েবসাইটের সকল ব্র্যান্ডিং তথ্য, যোগাযোগের নম্বর, লোগো ও ডিজাইন সফলভাবে সংরক্ষণ করা হয়েছে এবং তাৎক্ষণিকভাবে সক্রিয় হয়েছে।'
+    );
   };
 
   // Banner Upload Refs & Handlers
@@ -337,6 +361,10 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       successRatio,
     });
     showToast('সবগুলো Order Settings সফলভাবে সংরক্ষিত ও সাইটে ১০০% সক্রিয় করা হয়েছে!');
+    triggerSuccessPopup(
+      'অর্ডার সেটিংস সেভ হয়েছে!',
+      'সবগুলো Order Settings সফলভাবে সংরক্ষিত হয়েছে এবং ওয়েবসাইটে শতভাগ সক্রিয় করা হয়েছে।'
+    );
   };
 
   // -------------------------------------------------------------
@@ -389,6 +417,10 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     setNewCouponDiscount('');
     setIsAddCouponModalOpen(false);
     showToast(`কুপন কোড ${newCoupon.code} সফলভাবে যোগ করা হয়েছে!`);
+    triggerSuccessPopup(
+      'কুপন কোড সেভ হয়েছে!',
+      `কুপন কোড "${newCoupon.code}" (${newCoupon.discount} ডিসকাউন্ট) সফলভাবে তৈরি ও সক্রিয় করা হয়েছে।`
+    );
   };
 
   const handleDeleteCoupon = (id: string) => {
@@ -419,12 +451,16 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     delivery:
       '১. সারাদেশে ক্যাশ অন ডেলিভারি প্রযোজ্য।\n২. ডেলিভারি চার্জ: ঢাকার ভিতরে ৮০ টাকা, ঢাকার বাইরে ১৫০ টাকা।\n৩. পণ্য হাতে পেয়ে চেক করে পেমেন্ট করার নিশ্চয়তা।',
     about:
-      'ইকম বাইট (EcomByte) বাংলাদেশের একটি বিশ্বস্ত অনলাইন শপিং প্ল্যাটফর্ম। আমরা সাশ্রয়ী মূল্যে প্রিমিয়াম কোয়ালিটি পণ্য সরবরাহ করে থাকি। আমাদের হটলাইন: 01982708789।',
+      'সমাধান পয়েন্ট (Somadhan Point) বাংলাদেশের একটি বিশ্বস্ত অনলাইন শপিং প্ল্যাটফর্ম। আমরা সাশ্রয়ী মূল্যে প্রিমিয়াম কোয়ালিটি পণ্য সরবরাহ করে থাকি। আমাদের হটলাইন: 01982708789।',
   });
 
   const handleSavePageContent = () => {
     localStorage.setItem('ecom_page_contents', JSON.stringify(pageContents));
     showToast('পেজের কনটেন্ট সফলভাবে সংরক্ষিত হয়েছে!');
+    triggerSuccessPopup(
+      'পেজ কনটেন্ট সেভ হয়েছে!',
+      'আপনার কাস্টম পেজ ও পলিসি তথ্যাদি সফলভাবে সংরক্ষণ করা হয়েছে।'
+    );
   };
 
   const handleFormat = (prefix: string, suffix: string = '') => {
@@ -519,6 +555,10 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     }
 
     showToast('Facebook Pixel সফলভাবে সক্রিয় ও সংরক্ষিত হয়েছে! পুরো ওয়েবসাইটে ট্র্যাকিং চালু আছে।');
+    triggerSuccessPopup(
+      'পিক্সেল সেটিংস সেভ হয়েছে!',
+      'Facebook ও TikTok Pixel সফলভাবে সংরক্ষণ এবং কার্যকর করা হয়েছে।'
+    );
   };
 
   const handleTriggerTestEvent = (eventName: string) => {
@@ -531,7 +571,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       case 'PageView':
         trackFacebookEvent('PageView', {
           test_event: true,
-          page_title: 'Homepage - EcomByte',
+          page_title: 'Homepage - Somadhan Point',
           url: window.location.href,
         });
         break;
@@ -2580,6 +2620,17 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
           )}
         </div>
       </main>
+
+      {/* Save Success Confirmation Modal */}
+      <SuccessSaveModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal((prev) => ({ ...prev, isOpen: false }))}
+        title={successModal.title}
+        message={successModal.message}
+        subMessage={successModal.subMessage}
+        buttonText="ঠিক আছে (OK)"
+        onViewSite={onBackToStore}
+      />
     </div>
   );
 };

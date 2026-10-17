@@ -12,6 +12,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface BrandRow {
   id: string;
@@ -143,6 +144,10 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
     setNewName('');
     setNewImageUrl('');
     showToast(`নতুন ব্র্যান্ড "${newBrand.name}" যুক্ত হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ব্র্যান্ড যুক্ত হয়েছে!',
+      message: `নতুন ব্র্যান্ড "${newBrand.name}" সফলভাবে ক্যাটালগে যুক্ত হয়েছে।`,
+    });
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -153,6 +158,10 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
       prev.map((b) => (b.id === editingBrand.id ? editingBrand : b))
     );
     showToast(`ব্র্যান্ড "${editingBrand.name}" সফলভাবে আপডেট হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'ব্র্যান্ড সেভ হয়েছে!',
+      message: `ব্র্যান্ড "${editingBrand.name}" এর সকল তথ্য সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
     setEditingBrand(null);
   };
 

@@ -15,6 +15,7 @@ import {
   Edit
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 interface AccountingPageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -78,14 +79,23 @@ export const AccountingPage: React.FC<AccountingPageProps> = ({
     setExpNote('');
     setToastMessage('খরচ সফলভাবে যোগ করা হয়েছে!');
     setTimeout(() => setToastMessage(null), 3000);
+    triggerGlobalSuccessModal({
+      title: 'হিসাব সংরক্ষণ হয়েছে!',
+      message: `খরচের বিবরণ "${newExp.title}" (৳${newExp.amount}) সফলভাবে সেভ করা হয়েছে।`,
+    });
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
-    setCategories([...categories, newCategoryName.trim()]);
+    const catName = newCategoryName.trim();
+    setCategories([...categories, catName]);
     setIsAddCategoryOpen(false);
     setNewCategoryName('');
+    triggerGlobalSuccessModal({
+      title: 'ক্যাটাগরি যুক্ত হয়েছে!',
+      message: `খরচের ক্যাটাগরি "${catName}" সফলভাবে তৈরি হয়েছে।`,
+    });
   };
 
   const handleDeleteExpense = (id: string) => {

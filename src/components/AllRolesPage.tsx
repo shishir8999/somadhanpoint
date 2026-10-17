@@ -13,6 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface RoleItem {
   id: string;
@@ -169,6 +170,10 @@ export const AllRolesPage: React.FC<AllRolesPageProps> = ({
       )
     );
     showToast(`Role "${editingRole.name}" updated successfully!`);
+    triggerGlobalSuccessModal({
+      title: 'রোল আপডেট হয়েছে!',
+      message: `রোল "${editingRole.name}" এর পারমিশন সফলভাবে সংরক্ষণ করা হয়েছে।`,
+    });
     setEditingRole(null);
   };
 
@@ -188,6 +193,10 @@ export const AllRolesPage: React.FC<AllRolesPageProps> = ({
 
     setRolesList((prev) => [...prev, newRole]);
     showToast(`New role "${newRole.name}" created!`);
+    triggerGlobalSuccessModal({
+      title: 'নতুন রোল তৈরি হয়েছে!',
+      message: `রোল "${newRole.name}" (${newRole.permissionsCount} টি পারমিশন) সফলভাবে যুক্ত হয়েছে।`,
+    });
     setIsCreateModalOpen(false);
     setNewRoleName('');
     setSelectedPermissions([]);

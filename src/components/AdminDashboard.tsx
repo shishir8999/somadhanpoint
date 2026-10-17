@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Order } from '../types';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 interface AdminDashboardProps {
   onBackToStore: () => void;
@@ -634,7 +635,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
               <button
                 onClick={() => {
-                  alert('অর্ডার সফলভাবে সেভ করা হয়েছে!');
+                  triggerGlobalSuccessModal({
+                    title: 'অর্ডার সেভ হয়েছে!',
+                    message: 'অর্ডারটি সফলভাবে সংরক্ষিত হয়েছে এবং সিস্টেমে যুক্ত হয়েছে।',
+                  });
                   setShowCreateOrder(false);
                 }}
                 className="w-1/2 py-2 bg-[#990000] text-white rounded text-xs font-bold"

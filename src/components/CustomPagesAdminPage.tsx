@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useCustomPages, CustomPageData, PageSection } from '../context/CustomPagesContext';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 interface CustomPagesAdminPageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -69,6 +70,10 @@ export const CustomPagesAdminPage: React.FC<CustomPagesAdminPageProps> = ({
       sections,
     });
     showToast(`'${title}' পেইজের পরিবর্তন সফলভাবে সংরক্ষিত ও লাইভ হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'পেইজ কনটেন্ট সংরক্ষিত হয়েছে!',
+      message: `'${title}' পেইজের পরিবর্তন ও সেকশন সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
   };
 
   const handleResetCurrent = () => {

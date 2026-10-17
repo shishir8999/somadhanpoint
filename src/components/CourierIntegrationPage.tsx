@@ -31,6 +31,7 @@ import {
   CourierConsignment,
   CourierApiSettings,
 } from '../utils/courierService';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 interface CourierIntegrationPageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -156,6 +157,10 @@ export const CourierIntegrationPage: React.FC<CourierIntegrationPageProps> = ({
   const handleSaveSettings = () => {
     saveCourierSettings(settings);
     showToast('কুরিয়ার API সেটিংস সফলভাবে সংরক্ষিত হয়েছে!');
+    triggerGlobalSuccessModal({
+      title: 'কুরিয়ার সেটিংস সেভ হয়েছে!',
+      message: 'Steadfast ও Pathao কুরিয়ারের সকল API কী ও সেটিংস সফলভাবে সংরক্ষিত হয়েছে।',
+    });
   };
 
   // Open single dispatch modal

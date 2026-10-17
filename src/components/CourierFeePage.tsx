@@ -17,6 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 interface CourierFeePageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -117,6 +118,10 @@ export const CourierFeePage: React.FC<CourierFeePageProps> = ({
       })
     );
     showToast('ডেলিভারি ফি ও কুরিয়ার সেটিংস সফলভাবে সংরক্ষিত হয়েছে!');
+    triggerGlobalSuccessModal({
+      title: 'ডেলিভারি ফি সেভ হয়েছে!',
+      message: 'সকল জোনের ডেলিভারি চার্জ ও কুরিয়ার সেটিংস সফলভাবে সংরক্ষিত হয়েছে।',
+    });
   };
 
   return (

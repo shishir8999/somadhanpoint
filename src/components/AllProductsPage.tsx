@@ -18,6 +18,7 @@ import {
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { AdminProductModal } from './AdminProductModal';
+import { SuccessSaveModal } from './SuccessSaveModal';
 import { ColorVariant } from '../types';
 
 export interface AdminProductRow {
@@ -71,6 +72,15 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProductRow | null>(null);
+  const [successModal, setSuccessModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
 
 
   // 20 Exact Products matching Screenshot 1
@@ -406,6 +416,11 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       );
       setEditingProduct(null);
       showToast(`প্রোডাক্ট "${savedProd.name}" সফলভাবে আপডেট করা হয়েছে!`);
+      setSuccessModal({
+        isOpen: true,
+        title: 'প্রোডাক্ট আপডেট হয়েছে!',
+        message: `প্রোডাক্ট "${savedProd.name}" এর সকল তথ্য সফলভাবে সংরক্ষিত ও ওয়েবসাইটে আপডেট করা হয়েছে।`,
+      });
     } else {
       const newProd: AdminProductRow = {
         ...savedProd,
@@ -415,6 +430,11 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       setProductsList((prev) => [newProd, ...prev]);
       setIsAddModalOpen(false);
       showToast(`নতুন প্রোডাক্ট "${newProd.name}" সফলভাবে যুক্ত হয়েছে!`);
+      setSuccessModal({
+        isOpen: true,
+        title: 'নতুন প্রোডাক্ট যুক্ত হয়েছে!',
+        message: `প্রোডাক্ট "${newProd.name}" সফলভাবে ক্যাটালগে যুক্ত হয়েছে এবং দোকানে লাইভ করা হয়েছে।`,
+      });
     }
   };
 
@@ -918,6 +938,16 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
         product={editingProduct}
         onClose={() => setEditingProduct(null)}
         onSave={handleSaveProduct}
+      />
+
+      {/* Save Success Confirmation Modal */}
+      <SuccessSaveModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal((prev) => ({ ...prev, isOpen: false }))}
+        title={successModal.title}
+        message={successModal.message}
+        buttonText="ঠিক আছে (OK)"
+        onViewSite={onBackToStore}
       />
     </div>
   );

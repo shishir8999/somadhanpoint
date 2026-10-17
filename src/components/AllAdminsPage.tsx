@@ -11,6 +11,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
+import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export interface AdminUserRow {
   id: string;
@@ -126,6 +127,10 @@ export const AllAdminsPage: React.FC<AllAdminsPageProps> = ({
     setNewName('');
     setNewNumber('');
     showToast(`নতুন অ্যাডমিন/স্টাফ "${newRow.name}" সফলভাবে যুক্ত হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'অ্যাডমিন যুক্ত হয়েছে!',
+      message: `নতুন অ্যাডমিন/স্টাফ "${newRow.name}" (${newRow.role}) সফলভাবে সিস্টেমে যুক্ত হয়েছে।`,
+    });
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -136,6 +141,10 @@ export const AllAdminsPage: React.FC<AllAdminsPageProps> = ({
       prev.map((a) => (a.id === editingAdmin.id ? editingAdmin : a))
     );
     showToast(`"${editingAdmin.name}" সফলভাবে আপডেট করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'তথ্য আপডেট হয়েছে!',
+      message: `অ্যাডমিন "${editingAdmin.name}" এর সকল তথ্য সফলভাবে সংরক্ষিত হয়েছে।`,
+    });
     setEditingAdmin(null);
   };
 
