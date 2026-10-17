@@ -25,10 +25,12 @@ Route::delete('/products/{id}', [EcommerceApiController::class, 'deleteProduct']
 // 3. Categories
 Route::get('/categories', [EcommerceApiController::class, 'getCategories']);
 Route::post('/categories/sync', [EcommerceApiController::class, 'syncCategories']);
+Route::delete('/categories/{id}', [EcommerceApiController::class, 'deleteCategory']);
 
 // 4. Brands
 Route::get('/brands', [EcommerceApiController::class, 'getBrands']);
 Route::post('/brands/sync', [EcommerceApiController::class, 'syncBrands']);
+Route::delete('/brands/{id}', [EcommerceApiController::class, 'deleteBrand']);
 
 // 5. Orders & Checkout
 Route::get('/orders', [EcommerceApiController::class, 'getOrders']);

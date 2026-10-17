@@ -235,8 +235,10 @@ class EcommerceApiController extends Controller
         // 2. Save to MySQL database
         try {
             if (DB::connection()->getPdo()) {
+                $submittedIds = [];
                 foreach ($products as $p) {
                     $prodId = (string)($p['id'] ?? ('prod-' . time() . '-' . rand(100, 999)));
+                    $submittedIds[] = $prodId;
                     $prod = Product::updateOrCreate(
                         ['id' => $prodId],
                         [
@@ -274,6 +276,15 @@ class EcommerceApiController extends Controller
                         }
                     }
                 }
+
+                // Delete any removed products from MySQL database permanently!
+                if (!empty($submittedIds)) {
+                    Product::whereNotIn('id', $submittedIds)->delete();
+                    ProductColorVariant::whereNotIn('product_id', $submittedIds)->delete();
+                } else if ($request->has('products') && is_array($products) && count($products) === 0) {
+                    Product::truncate();
+                    ProductColorVariant::truncate();
+                }
             }
         } catch (\Throwable $e) {
             Log::info("DB syncProducts fallback: " . $e->getMessage());
@@ -294,6 +305,7 @@ class EcommerceApiController extends Controller
 
         try {
             if (DB::connection()->getPdo()) {
+                ProductColorVariant::where('product_id', $id)->delete();
                 Product::where('id', $id)->delete();
             }
         } catch (\Throwable $e) {
@@ -351,8 +363,10 @@ class EcommerceApiController extends Controller
 
         try {
             if (DB::connection()->getPdo()) {
+                $submittedCatIds = [];
                 foreach ($categories as $cat) {
-                    $catId = (string)($cat['id'] ?? ('cat-' . time()));
+                    $catId = (string)($cat['id'] ?? ('cat-' . time() . '-' . rand(10, 99)));
+                    $submittedCatIds[] = $catId;
                     $c = Category::updateOrCreate(
                         ['id' => $catId],
                         [
@@ -376,12 +390,39 @@ class EcommerceApiController extends Controller
                         }
                     }
                 }
+
+                if (!empty($submittedCatIds)) {
+                    $deletedCatIds = Category::whereNotIn('id', $submittedCatIds)->pluck('id');
+                    Subcategory::whereIn('category_id', $deletedCatIds)->delete();
+                    Category::whereNotIn('id', $submittedCatIds)->delete();
+                } else if ($request->has('categories') && is_array($categories) && count($categories) === 0) {
+                    Subcategory::truncate();
+                    Category::truncate();
+                }
             }
         } catch (\Throwable $e) {
             Log::info("DB syncCategories fallback: " . $e->getMessage());
         }
 
         return response()->json(['success' => true, 'message' => 'Categories synced permanently!']);
+    }
+
+    public function deleteCategory($id)
+    {
+        $categories = $this->loadFromFileBackup('categories', []);
+        $updated = array_values(array_filter($categories, fn($c) => ($c['id'] ?? '') !== $id));
+        $this->saveToFileBackup('categories', $updated);
+
+        try {
+            if (DB::connection()->getPdo()) {
+                Subcategory::where('category_id', $id)->delete();
+                Category::where('id', $id)->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB category delete fallback: " . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'Category deleted successfully']);
     }
 
     // ==========================================
@@ -424,8 +465,10 @@ class EcommerceApiController extends Controller
 
         try {
             if (DB::connection()->getPdo()) {
+                $submittedBrandIds = [];
                 foreach ($brands as $b) {
-                    $brandId = (string)($b['id'] ?? ('brand-' . time()));
+                    $brandId = (string)($b['id'] ?? ('brand-' . time() . '-' . rand(10, 99)));
+                    $submittedBrandIds[] = $brandId;
                     Brand::updateOrCreate(
                         ['id' => $brandId],
                         [
@@ -438,12 +481,35 @@ class EcommerceApiController extends Controller
                         ]
                     );
                 }
+
+                if (!empty($submittedBrandIds)) {
+                    Brand::whereNotIn('id', $submittedBrandIds)->delete();
+                } else if ($request->has('brands') && is_array($brands) && count($brands) === 0) {
+                    Brand::truncate();
+                }
             }
         } catch (\Throwable $e) {
             Log::info("DB syncBrands fallback: " . $e->getMessage());
         }
 
         return response()->json(['success' => true, 'message' => 'Brands synced permanently!']);
+    }
+
+    public function deleteBrand($id)
+    {
+        $brands = $this->loadFromFileBackup('brands', []);
+        $updated = array_values(array_filter($brands, fn($b) => ($b['id'] ?? '') !== $id));
+        $this->saveToFileBackup('brands', $updated);
+
+        try {
+            if (DB::connection()->getPdo()) {
+                Brand::where('id', $id)->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB brand delete fallback: " . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'Brand deleted successfully']);
     }
 
     // ==========================================
