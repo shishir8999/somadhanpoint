@@ -38,8 +38,7 @@ export const ProductVariantsPage: React.FC<ProductVariantsPageProps> = ({
   const [newName, setNewName] = useState('');
   const [newValuesString, setNewValuesString] = useState('');
 
-  // Exact rows from Screenshot 3
-  const [variantsList, setVariantsList] = useState<VariantOptionRow[]>([
+  const DEFAULT_VARIANTS: VariantOptionRow[] = [
     {
       id: 'var-1',
       name: 'Size',
@@ -52,7 +51,30 @@ export const ProductVariantsPage: React.FC<ProductVariantsPageProps> = ({
       values: ['red', 'green', 'blue'],
       createdDate: 'August 13, 2026',
     },
-  ]);
+  ];
+
+  // Exact rows with localStorage persistence
+  const [variantsList, setVariantsList] = useState<VariantOptionRow[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ummah_admin_variants_list');
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+    }
+    return DEFAULT_VARIANTS;
+  });
+
+  // Save to localStorage whenever variantsList changes
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('ummah_admin_variants_list', JSON.stringify(variantsList));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('variants-updated'));
+    } catch (e) {}
+  }, [variantsList]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

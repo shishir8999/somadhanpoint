@@ -356,11 +356,12 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   // Initial load from server database
   useEffect(() => {
     fetchProductsFromDatabase().then((dbProducts) => {
-      if (dbProducts && Array.isArray(dbProducts) && dbProducts.length > 0) {
+      if (dbProducts && Array.isArray(dbProducts)) {
         setProductsList(dbProducts);
         try {
           localStorage.setItem('ummah_admin_products_list', JSON.stringify(dbProducts));
           window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('products-updated'));
         } catch {}
       }
     });
@@ -392,15 +393,38 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       sl: productsList.length + 1,
       name: `${prod.name} (Copy)`,
     };
-    setProductsList((prev) => [cloned, ...prev]);
+    const updated = [cloned, ...productsList];
+    setProductsList(updated);
+    try {
+      localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('products-updated'));
+    } catch {}
+    saveProductsToDatabase(updated);
     showToast(`"${prod.name}" সফলভাবে কপি করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'প্রোডাক্ট কপি হয়েছে!',
+      message: `"${prod.name}" সফলভাবে কপি করা হয়েছে এবং ডাটাবেজে যুক্ত করা হয়েছে।`,
+    });
   };
 
   const handleDeleteProduct = (id: string) => {
     if (confirm('আপনি কি নিশ্চিত যে এই প্রোডাক্টটি মুছে ফেলতে চান?')) {
-      setProductsList((prev) => prev.filter((p) => p.id !== id));
+      const updated = productsList.filter((p) => p.id !== id);
+      setProductsList(updated);
       setSelectedProductIds((prev) => prev.filter((item) => item !== id));
+      try {
+        localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('products-updated'));
+      } catch {}
+      saveProductsToDatabase(updated);
+      fetch(`/api/products/${id}`, { method: 'DELETE' });
       showToast('প্রোডাক্ট সফলভাবে মুছে ফেলা হয়েছে!');
+      triggerGlobalSuccessModal({
+        title: 'প্রোডাক্ট মুছে ফেলা হয়েছে!',
+        message: 'নির্বাচিত প্রোডাক্টটি সফলভাবে ডাটাবেজ ও ওয়েবসাইট থেকে চিরতরে মুছে ফেলা হয়েছে।',
+      });
     }
   };
 
@@ -420,10 +444,25 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     const count = selectedProductIds.length;
     if (count === 0) return;
 
-    setProductsList((prev) => prev.filter((p) => !selectedProductIds.includes(p.id)));
+    const idsToDelete = [...selectedProductIds];
+    const updated = productsList.filter((p) => !idsToDelete.includes(p.id));
+    setProductsList(updated);
     setSelectedProductIds([]);
     setIsBulkDeleteModalOpen(false);
+    try {
+      localStorage.setItem('ummah_admin_products_list', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('products-updated'));
+    } catch {}
+    saveProductsToDatabase(updated);
+    idsToDelete.forEach((id) => {
+      fetch(`/api/products/${id}`, { method: 'DELETE' });
+    });
     showToast(`${count} টি প্রোডাক্ট সফলভাবে ডিলিট করা হয়েছে!`);
+    triggerGlobalSuccessModal({
+      title: 'প্রোডাক্ট ডিলিট সম্পন্ন!',
+      message: `${count} টি প্রোডাক্ট ডাটাবেজ এবং ওয়েবসাইট থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`,
+    });
   };
 
   const handleSaveProduct = (savedProd: AdminProductRow) => {

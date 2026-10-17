@@ -44,14 +44,14 @@ export const ProductsCatalogPage: React.FC<ProductsCatalogPageProps> = ({
     }
   }, [initialSearchQuery]);
 
-  // Dynamic Categories from localStorage
-  const [categoriesList] = useState(() => {
+  // Dynamic Categories from localStorage & DB
+  const [categoriesList, setCategoriesList] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('ummah_admin_categories_list');
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) return parsed;
         }
       } catch (e) {
         // ignore
@@ -59,6 +59,27 @@ export const ProductsCatalogPage: React.FC<ProductsCatalogPageProps> = ({
     }
     return CIRCULAR_CATEGORIES;
   });
+
+  React.useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setCategoriesList(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('categories-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('categories-updated', handleStorage);
+    };
+  }, []);
 
   // Filter & sort
   const filteredProducts = useMemo(() => {

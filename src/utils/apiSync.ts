@@ -41,7 +41,7 @@ export const fetchProductsFromDatabase = async () => {
     const res = await fetch('/api/products');
     if (res.ok) {
       const data = await res.json();
-      if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+      if (data.success && Array.isArray(data.products)) {
         return data.products;
       }
     }
@@ -63,13 +63,23 @@ export const saveProductsToDatabase = async (products: any[]) => {
   }
 };
 
+export const deleteProductFromDatabase = async (id: string) => {
+  try {
+    const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to delete product from server database', e);
+    return false;
+  }
+};
+
 // 3. Categories
 export const fetchCategoriesFromDatabase = async () => {
   try {
     const res = await fetch('/api/categories');
     if (res.ok) {
       const data = await res.json();
-      if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+      if (data.success && Array.isArray(data.categories)) {
         return data.categories;
       }
     }
@@ -91,13 +101,23 @@ export const saveCategoriesToDatabase = async (categories: any[]) => {
   }
 };
 
+export const deleteCategoryFromDatabase = async (id: string) => {
+  try {
+    const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to delete category from server database', e);
+    return false;
+  }
+};
+
 // 4. Brands
 export const fetchBrandsFromDatabase = async () => {
   try {
     const res = await fetch('/api/brands');
     if (res.ok) {
       const data = await res.json();
-      if (data.success && Array.isArray(data.brands) && data.brands.length > 0) {
+      if (data.success && Array.isArray(data.brands)) {
         return data.brands;
       }
     }
@@ -115,6 +135,16 @@ export const saveBrandsToDatabase = async (brands: any[]) => {
     return res.ok;
   } catch (e) {
     console.error('Failed to sync brands with server database', e);
+    return false;
+  }
+};
+
+export const deleteBrandFromDatabase = async (id: string) => {
+  try {
+    const res = await fetch(`/api/brands/${id}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to delete brand from server database', e);
     return false;
   }
 };

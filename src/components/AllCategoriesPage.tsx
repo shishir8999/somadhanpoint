@@ -211,11 +211,12 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
   // Initial load from server database
   useEffect(() => {
     fetchCategoriesFromDatabase().then((dbCats) => {
-      if (dbCats && Array.isArray(dbCats) && dbCats.length > 0) {
+      if (dbCats && Array.isArray(dbCats)) {
         setCategoriesList(dbCats);
         try {
           localStorage.setItem('ummah_admin_categories_list', JSON.stringify(dbCats));
           window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('categories-updated'));
         } catch {}
       }
     });
@@ -326,8 +327,20 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
   // 3. Delete Category Handler
   const handleDeleteCategory = (id: string, name: string) => {
     if (confirm(`আপনি কি সত্যিই "${name}" ক্যাটাগরিটি মুছে ফেলতে চান?`)) {
-      setCategoriesList((prev) => prev.filter((c) => c.id !== id));
+      const updated = categoriesList.filter((c) => c.id !== id);
+      setCategoriesList(updated);
+      try {
+        localStorage.setItem('ummah_admin_categories_list', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('categories-updated'));
+      } catch {}
+      saveCategoriesToDatabase(updated);
+      fetch(`/api/categories/${id}`, { method: 'DELETE' });
       showToast(`"${name}" ক্যাটাগরি সফলভাবে মুছে ফেলা হয়েছে!`);
+      triggerGlobalSuccessModal({
+        title: 'ক্যাটাগরি মুছে ফেলা হয়েছে!',
+        message: `"${name}" ক্যাটাগরি এবং এর উপ-ক্যাটাগরি ডাটাবেজ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`,
+      });
     }
   };
 

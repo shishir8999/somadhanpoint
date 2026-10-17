@@ -4,6 +4,8 @@ import { CIRCULAR_CATEGORIES } from '../data/products';
 import { ProductVisual } from './ProductVisual';
 import { CategoryItem } from '../types';
 
+import { fetchCategoriesFromDatabase } from '../utils/apiSync';
+
 interface CategoriesCarouselProps {
   onSelectCategory: (categoryName: string) => void;
   selectedCategory?: string;
@@ -19,9 +21,9 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('ummah_admin_categories_list');
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) return parsed;
         }
       } catch (e) {
         // ignore
@@ -30,13 +32,22 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
     return CIRCULAR_CATEGORIES;
   });
 
+  // Fetch from database on mount
+  useEffect(() => {
+    fetchCategoriesFromDatabase().then((dbCats) => {
+      if (dbCats && Array.isArray(dbCats)) {
+        setCategories(dbCats);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const handleStorage = () => {
       try {
         const saved = localStorage.getItem('ummah_admin_categories_list');
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setCategories(parsed);
           }
         }
@@ -46,7 +57,11 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
     };
 
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('categories-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('categories-updated', handleStorage);
+    };
   }, []);
 
   const scroll = (direction: 'left' | 'right') => {

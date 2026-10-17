@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrandItem } from '../types';
+import { fetchBrandsFromDatabase } from '../utils/apiSync';
 
 interface BrandSectionProps {
   onSelectBrand?: (brandName: string) => void;
@@ -28,9 +29,9 @@ export const BrandSection: React.FC<BrandSectionProps> = ({ onSelectBrand }) => 
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('ummah_admin_brands_list');
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) return parsed;
         }
       } catch (e) {
         // ignore
@@ -39,13 +40,22 @@ export const BrandSection: React.FC<BrandSectionProps> = ({ onSelectBrand }) => 
     return DEFAULT_BRANDS;
   });
 
+  // Fetch from database on mount
+  useEffect(() => {
+    fetchBrandsFromDatabase().then((dbBrands) => {
+      if (dbBrands && Array.isArray(dbBrands)) {
+        setBrands(dbBrands);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const handleStorage = () => {
       try {
         const saved = localStorage.getItem('ummah_admin_brands_list');
-        if (saved) {
+        if (saved !== null) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setBrands(parsed);
           }
         }
@@ -55,8 +65,16 @@ export const BrandSection: React.FC<BrandSectionProps> = ({ onSelectBrand }) => 
     };
 
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('brands-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('brands-updated', handleStorage);
+    };
   }, []);
+
+  if (!brands || brands.length === 0) {
+    return null;
+  }
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

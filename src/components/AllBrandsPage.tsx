@@ -94,11 +94,12 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
   // Initial load from server database
   useEffect(() => {
     fetchBrandsFromDatabase().then((dbBrands) => {
-      if (dbBrands && Array.isArray(dbBrands) && dbBrands.length > 0) {
+      if (dbBrands && Array.isArray(dbBrands)) {
         setBrandsList(dbBrands);
         try {
           localStorage.setItem('ummah_admin_brands_list', JSON.stringify(dbBrands));
           window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('brands-updated'));
         } catch {}
       }
     });
@@ -183,8 +184,20 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
 
   const handleDeleteBrand = (id: string, name: string) => {
     if (confirm(`আপনি কি সত্যিই "${name}" ব্র্যান্ডটি মুছে ফেলতে চান?`)) {
-      setBrandsList((prev) => prev.filter((b) => b.id !== id));
+      const updated = brandsList.filter((b) => b.id !== id);
+      setBrandsList(updated);
+      try {
+        localStorage.setItem('ummah_admin_brands_list', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('brands-updated'));
+      } catch {}
+      saveBrandsToDatabase(updated);
+      fetch(`/api/brands/${id}`, { method: 'DELETE' });
       showToast(`ব্র্যান্ড "${name}" মুছে ফেলা হয়েছে!`);
+      triggerGlobalSuccessModal({
+        title: 'ব্র্যান্ড মুছে ফেলা হয়েছে!',
+        message: `"${name}" ব্র্যান্ডটি সফলভাবে ডাটাবেজ থেকে চিরতরে মুছে ফেলা হয়েছে।`,
+      });
     }
   };
 

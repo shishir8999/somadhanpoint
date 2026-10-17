@@ -79,9 +79,9 @@ export const loadCombinedStoreProducts = (): Product[] => {
   if (typeof window === 'undefined') return ALL_NEW_PRODUCTS;
   try {
     const saved = localStorage.getItem('ummah_admin_products_list');
-    if (saved) {
+    if (saved !== null) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         const adminConverted: Product[] = parsed.map((p: any, idx: number) => {
           const numPrice =
             typeof p.price === 'number'
@@ -98,10 +98,11 @@ export const loadCombinedStoreProducts = (): Product[] => {
             p.imageUrl ||
             p.thumbnailUrl ||
             (p.galleryImages && p.galleryImages[0]) ||
-            (p.colorVariants && p.colorVariants.find((c: any) => c.image)?.image);
+            (p.colorVariants && p.colorVariants.find((c: any) => c.image)?.image) ||
+            '/placeholder.png';
 
           return {
-            id: p.id || `admin-prod-${idx}`,
+            id: String(p.id || `admin-prod-${idx}`),
             name: p.name || 'Unnamed Product',
             category: p.category && p.category !== '—' ? p.category : 'General',
             subcategory: p.subcategory,
@@ -124,9 +125,9 @@ export const loadCombinedStoreProducts = (): Product[] => {
           } as Product;
         });
 
-        const adminIds = new Set(adminConverted.map((p) => p.id));
-        const nonCollidingDefaults = ALL_NEW_PRODUCTS.filter((p) => !adminIds.has(p.id));
-        return [...adminConverted, ...nonCollidingDefaults];
+        // The adminConverted list is the single source of truth.
+        // DO NOT merge back deleted mock products!
+        return adminConverted;
       }
     }
   } catch (e) {
@@ -196,7 +197,7 @@ export default function App() {
   // Sync storeProducts with server database on mount
   useEffect(() => {
     fetchProductsFromDatabase().then((dbProducts) => {
-      if (dbProducts && Array.isArray(dbProducts) && dbProducts.length > 0) {
+      if (dbProducts && Array.isArray(dbProducts)) {
         try {
           localStorage.setItem('ummah_admin_products_list', JSON.stringify(dbProducts));
           setStoreProducts(loadCombinedStoreProducts());
@@ -226,30 +227,35 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Section product lists
+  // Section product lists (derived STRICTLY from storeProducts)
   const hotDealsProducts = React.useMemo(() => {
     const list = storeProducts.filter((p) => p.section === 'hot_deals');
-    return list.length > 0 ? list : HOT_DEALS_PRODUCTS;
+    if (list.length > 0) return list;
+    return storeProducts.slice(0, 10);
   }, [storeProducts]);
 
   const flashSaleProducts = React.useMemo(() => {
     const list = storeProducts.filter((p) => p.section === 'flash_sale');
-    return list.length > 0 ? list : FLASH_SALE_PRODUCTS;
+    if (list.length > 0) return list;
+    return storeProducts.slice(0, 10);
   }, [storeProducts]);
 
   const topRatedProducts = React.useMemo(() => {
     const list = storeProducts.filter((p) => p.section === 'top_rated');
-    return list.length > 0 ? list : TOP_RATED_PRODUCTS;
+    if (list.length > 0) return list;
+    return storeProducts.slice(0, 10);
   }, [storeProducts]);
 
   const bestSellsProducts = React.useMemo(() => {
     const list = storeProducts.filter((p) => p.section === 'best_sells');
-    return list.length > 0 ? list : BEST_SELLS_PRODUCTS;
+    if (list.length > 0) return list;
+    return storeProducts.slice(0, 10);
   }, [storeProducts]);
 
   const temporaryProducts = React.useMemo(() => {
     const list = storeProducts.filter((p) => p.section === 'temporary');
-    return list.length > 0 ? list : TEMPORARY_PRODUCTS;
+    if (list.length > 0) return list;
+    return storeProducts.slice(0, 10);
   }, [storeProducts]);
 
   // Mobile menu drawer state
@@ -629,7 +635,7 @@ export default function App() {
 
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalCartPrice = cartItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
-  const wishlistedProducts = ALL_NEW_PRODUCTS.filter((p) => wishlistIds.includes(p.id));
+  const wishlistedProducts = storeProducts.filter((p) => wishlistIds.includes(p.id));
 
   // Admin Navigation Handler
   const handleAdminNavigate = (page: AdminPageType) => {
