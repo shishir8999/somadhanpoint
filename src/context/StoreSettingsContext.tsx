@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchSettingsFromDatabase, saveSettingsToDatabase } from '../utils/apiSync';
 
 export interface StoreSettings {
   siteName: string;
@@ -180,6 +181,25 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     return DEFAULT_STORE_SETTINGS;
   });
 
+  // Permanently sync with server database on mount
+  useEffect(() => {
+    let isMounted = true;
+    fetchSettingsFromDatabase().then((dbSettings) => {
+      if (dbSettings && isMounted) {
+        setSettings((prev) => {
+          const merged = { ...prev, ...dbSettings };
+          try {
+            localStorage.setItem('ecom_store_settings', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -188,6 +208,8 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (e) {
         console.error('Error saving store settings', e);
       }
+      // Save permanently to MySQL database on the server
+      saveSettingsToDatabase(updated);
       return updated;
     });
   };

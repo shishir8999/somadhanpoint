@@ -72,6 +72,7 @@ import {
   trackInitiateCheckout,
   trackPurchase,
 } from './utils/pixel';
+import { fetchProductsFromDatabase } from './utils/apiSync';
 
 // Helper to load and merge admin-managed products from localStorage
 export const loadCombinedStoreProducts = (): Product[] => {
@@ -191,6 +192,18 @@ export default function App() {
   const [storeProducts, setStoreProducts] = useState<Product[]>(loadCombinedStoreProducts);
   // Search query carried over to ProductsCatalogPage
   const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
+
+  // Sync storeProducts with server database on mount
+  useEffect(() => {
+    fetchProductsFromDatabase().then((dbProducts) => {
+      if (dbProducts && Array.isArray(dbProducts) && dbProducts.length > 0) {
+        try {
+          localStorage.setItem('ummah_admin_products_list', JSON.stringify(dbProducts));
+          setStoreProducts(loadCombinedStoreProducts());
+        } catch {}
+      }
+    });
+  }, []);
 
   // Sync storeProducts when localStorage changes or custom event fires
   useEffect(() => {

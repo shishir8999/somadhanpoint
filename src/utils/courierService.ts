@@ -1,3 +1,5 @@
+import { fetchCourierSettingsFromDatabase, saveCourierSettingsToDatabase } from './apiSync';
+
 // Courier Integration Service for Bangladesh E-Commerce (Steadfast, Pathao, RedX)
 
 export interface CourierApiSettings {
@@ -105,6 +107,20 @@ const INITIAL_CONSIGNMENTS: CourierConsignment[] = [
   },
 ];
 
+// Initial background sync from database
+if (typeof window !== 'undefined') {
+  fetchCourierSettingsFromDatabase().then((dbSettings) => {
+    if (dbSettings) {
+      try {
+        const current = getCourierSettings();
+        const merged = { ...current, ...dbSettings };
+        localStorage.setItem('ecom_courier_settings', JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('courier_settings_updated', { detail: merged }));
+      } catch {}
+    }
+  });
+}
+
 export function getCourierSettings(): CourierApiSettings {
   try {
     const raw = localStorage.getItem('ecom_courier_settings');
@@ -128,6 +144,8 @@ export function saveCourierSettings(settings: CourierApiSettings) {
   try {
     localStorage.setItem('ecom_courier_settings', JSON.stringify(settings));
     window.dispatchEvent(new CustomEvent('courier_settings_updated', { detail: settings }));
+    // Persist to server backend database
+    saveCourierSettingsToDatabase(settings);
   } catch (e) {
     console.error('Failed to save courier settings', e);
   }

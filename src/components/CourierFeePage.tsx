@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
+import { fetchCourierSettingsFromDatabase, saveCourierSettingsToDatabase } from '../utils/apiSync';
 
 interface CourierFeePageProps {
   onNavigate: (page: AdminPageType) => void;
@@ -35,47 +36,111 @@ export const CourierFeePage: React.FC<CourierFeePageProps> = ({
   onNavigate,
   onBackToStore,
 }) => {
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).isActive ?? true;
+    } catch {}
+    return true;
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Delivery Zones matching Screenshot 1
-  const [zones, setZones] = useState<DeliveryZone[]>([
-    {
-      id: 'zone-1',
-      name: 'ঢাকার বাইরে',
-      fee: 150,
-      district: 'All Districts',
-    },
-    {
-      id: 'zone-2',
-      name: 'ঢাকার ভিতরে',
-      fee: 80,
-      district: 'ঢাকা',
-    },
-  ]);
+  const [zones, setZones] = useState<DeliveryZone[]>(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed.zones) && parsed.zones.length > 0) return parsed.zones;
+      }
+    } catch {}
+    return [
+      {
+        id: 'zone-1',
+        name: 'ঢাকার বাইরে',
+        fee: 150,
+        district: 'All Districts',
+      },
+      {
+        id: 'zone-2',
+        name: 'ঢাকার ভিতরে',
+        fee: 80,
+        district: 'ঢাকা',
+      },
+    ];
+  });
 
   // Accordion open states
   const [expandedCourier, setExpandedCourier] = useState<string>('steadfast');
 
   // SteadFast Credentials
-  const [steadfastUrl, setSteadfastUrl] = useState('https://portal.packzy.com/api/v1');
-  const [steadfastApiKey, setSteadfastApiKey] = useState('');
-  const [steadfastSecretKey, setSteadfastSecretKey] = useState('');
+  const [steadfastUrl, setSteadfastUrl] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).steadfast?.url || 'https://portal.packzy.com/api/v1';
+    } catch {}
+    return 'https://portal.packzy.com/api/v1';
+  });
+  const [steadfastApiKey, setSteadfastApiKey] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).steadfast?.apiKey || '';
+    } catch {}
+    return '';
+  });
+  const [steadfastSecretKey, setSteadfastSecretKey] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).steadfast?.secretKey || '';
+    } catch {}
+    return '';
+  });
   const [steadfastWebhook, setSteadfastWebhook] = useState('');
   const [showSteadfastKey, setShowSteadfastKey] = useState(false);
   const [showSteadfastSecret, setShowSteadfastSecret] = useState(false);
   const [showSteadfastWebhook, setShowSteadfastWebhook] = useState(false);
 
   // Pathao Credentials
-  const [pathaoClientId, setPathaoClientId] = useState('');
+  const [pathaoClientId, setPathaoClientId] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).pathao?.clientId || '';
+    } catch {}
+    return '';
+  });
   const [pathaoClientSecret, setPathaoClientSecret] = useState('');
-  const [pathaoStoreId, setPathaoStoreId] = useState('');
+  const [pathaoStoreId, setPathaoStoreId] = useState(() => {
+    try {
+      const s = localStorage.getItem('ecom_courier_settings');
+      if (s) return JSON.parse(s).pathao?.storeId || '';
+    } catch {}
+    return '';
+  });
 
   // Redx Credentials
   const [redxToken, setRedxToken] = useState('');
 
   // Carrybee Credentials
   const [carrybeeApiKey, setCarrybeeApiKey] = useState('');
+
+  // Sync with server DB on mount
+  React.useEffect(() => {
+    fetchCourierSettingsFromDatabase().then((dbSettings) => {
+      if (dbSettings) {
+        if (dbSettings.isActive !== undefined) setIsActive(dbSettings.isActive);
+        if (Array.isArray(dbSettings.zones) && dbSettings.zones.length > 0) setZones(dbSettings.zones);
+        if (dbSettings.steadfast) {
+          if (dbSettings.steadfast.apiKey) setSteadfastApiKey(dbSettings.steadfast.apiKey);
+          if (dbSettings.steadfast.secretKey) setSteadfastSecretKey(dbSettings.steadfast.secretKey);
+          if (dbSettings.steadfast.url) setSteadfastUrl(dbSettings.steadfast.url);
+        }
+        if (dbSettings.pathao) {
+          if (dbSettings.pathao.clientId) setPathaoClientId(dbSettings.pathao.clientId);
+          if (dbSettings.pathao.storeId) setPathaoStoreId(dbSettings.pathao.storeId);
+        }
+      }
+    });
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -107,16 +172,17 @@ export const CourierFeePage: React.FC<CourierFeePageProps> = ({
   };
 
   const handleSave = () => {
-    // Save to localStorage or store config
-    localStorage.setItem(
-      'ecom_courier_settings',
-      JSON.stringify({
-        isActive,
-        zones,
-        steadfast: { url: steadfastUrl, apiKey: steadfastApiKey, secretKey: steadfastSecretKey },
-        pathao: { clientId: pathaoClientId, storeId: pathaoStoreId },
-      })
-    );
+    const payload = {
+      isActive,
+      zones,
+      steadfast: { url: steadfastUrl, apiKey: steadfastApiKey, secretKey: steadfastSecretKey },
+      pathao: { clientId: pathaoClientId, storeId: pathaoStoreId },
+    };
+    // Save to localStorage
+    localStorage.setItem('ecom_courier_settings', JSON.stringify(payload));
+    // Save permanently to server database
+    saveCourierSettingsToDatabase(payload);
+
     showToast('ডেলিভারি ফি ও কুরিয়ার সেটিংস সফলভাবে সংরক্ষিত হয়েছে!');
     triggerGlobalSuccessModal({
       title: 'ডেলিভারি ফি সেভ হয়েছে!',

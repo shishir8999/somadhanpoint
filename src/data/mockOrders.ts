@@ -1,4 +1,5 @@
 import { Order } from '../types';
+import { fetchOrdersFromDatabase, saveOrdersToDatabase } from '../utils/apiSync';
 
 export interface OrderItem {
   id: string;
@@ -464,14 +465,31 @@ export const getStoredAdminOrders = (): OrderItem[] => {
   return DEFAULT_MOCK_ORDERS;
 };
 
+// Initial background sync from server database
+if (typeof window !== 'undefined') {
+  setTimeout(async () => {
+    try {
+      const dbOrders = await fetchOrdersFromDatabase();
+      if (dbOrders && Array.isArray(dbOrders) && dbOrders.length > 0) {
+        localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(dbOrders));
+        window.dispatchEvent(new Event('ummah_admin_orders_updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, 100);
+}
+
 /**
- * Persists admin orders into localStorage.
+ * Persists admin orders into localStorage and permanent server database.
  */
 export const saveStoredAdminOrders = (orders: OrderItem[]): void => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(orders));
     window.dispatchEvent(new Event('ummah_admin_orders_updated'));
+    // Persist permanently in server database & backup
+    saveOrdersToDatabase(orders);
   } catch (e) {
     console.error('Failed to save orders to localStorage', e);
   }

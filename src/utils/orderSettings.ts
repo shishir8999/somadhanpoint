@@ -10,6 +10,7 @@
  */
 
 import { Order } from '../types';
+import { fetchOrderSettingsFromDatabase, saveOrderSettingsToDatabase } from './apiSync';
 
 export interface OrderSettings {
   mobileVerification: boolean;
@@ -33,6 +34,19 @@ export const DEFAULT_ORDER_SETTINGS: OrderSettings = {
   successRatio: '60',
 };
 
+// Background sync from database
+if (typeof window !== 'undefined') {
+  fetchOrderSettingsFromDatabase().then((dbSettings) => {
+    if (dbSettings) {
+      try {
+        const merged = { ...DEFAULT_ORDER_SETTINGS, ...dbSettings };
+        localStorage.setItem('ecom_order_settings', JSON.stringify(merged));
+        window.dispatchEvent(new Event('order_settings_updated'));
+      } catch {}
+    }
+  });
+}
+
 export const getOrderSettings = (): OrderSettings => {
   if (typeof window === 'undefined') return DEFAULT_ORDER_SETTINGS;
   try {
@@ -55,6 +69,8 @@ export const saveOrderSettings = (newSettings: Partial<OrderSettings>): OrderSet
   } catch (e) {
     console.error('Error saving order settings', e);
   }
+  // Save permanently to server database
+  saveOrderSettingsToDatabase(updated);
   return updated;
 };
 

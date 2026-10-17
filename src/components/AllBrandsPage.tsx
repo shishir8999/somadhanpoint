@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
+import { fetchBrandsFromDatabase, saveBrandsToDatabase } from '../utils/apiSync';
 
 export interface BrandRow {
   id: string;
@@ -90,7 +91,20 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
     return DEFAULT_BRANDS;
   });
 
-  // Persist to localStorage whenever brands change
+  // Initial load from server database
+  useEffect(() => {
+    fetchBrandsFromDatabase().then((dbBrands) => {
+      if (dbBrands && Array.isArray(dbBrands) && dbBrands.length > 0) {
+        setBrandsList(dbBrands);
+        try {
+          localStorage.setItem('ummah_admin_brands_list', JSON.stringify(dbBrands));
+          window.dispatchEvent(new Event('storage'));
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Persist to localStorage and server database whenever brands change
   useEffect(() => {
     try {
       localStorage.setItem('ummah_admin_brands_list', JSON.stringify(brandsList));
@@ -98,6 +112,8 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
     } catch (e) {
       console.error('Failed to save brands to localStorage', e);
     }
+    // Save permanently to server database
+    saveBrandsToDatabase(brandsList);
   }, [brandsList]);
 
   const showToast = (msg: string) => {

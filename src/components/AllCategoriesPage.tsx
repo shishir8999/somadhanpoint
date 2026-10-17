@@ -19,6 +19,7 @@ import {
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
+import { fetchCategoriesFromDatabase, saveCategoriesToDatabase } from '../utils/apiSync';
 
 export interface SubCategoryItem {
   id: string;
@@ -207,7 +208,20 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
     return INITIAL_CATEGORIES_WITH_SUBS;
   });
 
-  // Sync categoriesList to localStorage
+  // Initial load from server database
+  useEffect(() => {
+    fetchCategoriesFromDatabase().then((dbCats) => {
+      if (dbCats && Array.isArray(dbCats) && dbCats.length > 0) {
+        setCategoriesList(dbCats);
+        try {
+          localStorage.setItem('ummah_admin_categories_list', JSON.stringify(dbCats));
+          window.dispatchEvent(new Event('storage'));
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Sync categoriesList to localStorage and server database
   useEffect(() => {
     try {
       localStorage.setItem('ummah_admin_categories_list', JSON.stringify(categoriesList));
@@ -215,6 +229,8 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
     } catch (e) {
       console.error('Failed to save categories to localStorage', e);
     }
+    // Save permanently to server database
+    saveCategoriesToDatabase(categoriesList);
   }, [categoriesList]);
 
   const showToast = (msg: string) => {

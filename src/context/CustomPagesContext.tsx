@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchCustomPagesFromDatabase, saveCustomPagesToDatabase } from '../utils/apiSync';
 
 export interface PageSection {
   heading: string;
@@ -227,6 +228,29 @@ export const CustomPagesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return DEFAULT_PAGES_DATA;
   });
 
+  // Fetch from server database on mount
+  useEffect(() => {
+    fetchCustomPagesFromDatabase().then((dbPages) => {
+      if (dbPages) {
+        let normalized: Record<string, CustomPageData> = {};
+        if (Array.isArray(dbPages)) {
+          dbPages.forEach((p: any) => {
+            const pageId = p.id || p.slug;
+            if (pageId) normalized[pageId] = p;
+          });
+        } else if (typeof dbPages === 'object') {
+          normalized = dbPages;
+        }
+        if (Object.keys(normalized).length > 0) {
+          setPages((prev) => ({
+            ...prev,
+            ...normalized,
+          }));
+        }
+      }
+    });
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('ecom_custom_pages_data', JSON.stringify(pages));
@@ -243,21 +267,29 @@ export const CustomPagesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setPages((prev) => {
       const current = prev[id] || DEFAULT_PAGES_DATA[id];
       const merged = { ...current, ...updatedData };
-      return { ...prev, [id]: merged };
+      const nextPages = { ...prev, [id]: merged };
+      // Save permanently to server database
+      saveCustomPagesToDatabase(nextPages);
+      return nextPages;
     });
   };
 
   const resetPage = (id: string) => {
     if (DEFAULT_PAGES_DATA[id]) {
-      setPages((prev) => ({
-        ...prev,
-        [id]: DEFAULT_PAGES_DATA[id],
-      }));
+      setPages((prev) => {
+        const nextPages = {
+          ...prev,
+          [id]: DEFAULT_PAGES_DATA[id],
+        };
+        saveCustomPagesToDatabase(nextPages);
+        return nextPages;
+      });
     }
   };
 
   const resetAllPages = () => {
     setPages(DEFAULT_PAGES_DATA);
+    saveCustomPagesToDatabase(DEFAULT_PAGES_DATA);
   };
 
   return (

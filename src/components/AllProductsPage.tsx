@@ -20,6 +20,7 @@ import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { AdminProductModal } from './AdminProductModal';
 import { SuccessSaveModal } from './SuccessSaveModal';
 import { ColorVariant } from '../types';
+import { fetchProductsFromDatabase, saveProductsToDatabase } from '../utils/apiSync';
 
 export interface AdminProductRow {
   id: string;
@@ -351,7 +352,20 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   ];
 });
 
-  // Sync productsList with localStorage
+  // Initial load from server database
+  useEffect(() => {
+    fetchProductsFromDatabase().then((dbProducts) => {
+      if (dbProducts && Array.isArray(dbProducts) && dbProducts.length > 0) {
+        setProductsList(dbProducts);
+        try {
+          localStorage.setItem('ummah_admin_products_list', JSON.stringify(dbProducts));
+          window.dispatchEvent(new Event('storage'));
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Sync productsList with localStorage and server database
   useEffect(() => {
     try {
       localStorage.setItem('ummah_admin_products_list', JSON.stringify(productsList));
@@ -360,6 +374,8 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     } catch (e) {
       console.error('Failed to save products to localStorage', e);
     }
+    // Save permanently to server database
+    saveProductsToDatabase(productsList);
   }, [productsList]);
 
   const showToast = (msg: string) => {
