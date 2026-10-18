@@ -74,6 +74,7 @@ import {
 } from './utils/pixel';
 import { fetchProductsFromDatabase } from './utils/apiSync';
 
+// Build Cache Buster: 2026-10-18T23:32:00
 // Helper to load and merge admin-managed products from localStorage
 export const loadCombinedStoreProducts = (): Product[] => {
   if (typeof window === 'undefined') return ALL_NEW_PRODUCTS;
