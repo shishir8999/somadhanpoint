@@ -47,3 +47,10 @@ Route::post('/order-settings', [EcommerceApiController::class, 'saveOrderSetting
 // 7. Custom Pages
 Route::get('/custom-pages', [EcommerceApiController::class, 'getCustomPages']);
 Route::post('/custom-pages/sync', [EcommerceApiController::class, 'syncCustomPages']);
+
+// 8. Reviews (Permanent Database & Approval Moderation)
+Route::get('/reviews', [EcommerceApiController::class, 'getReviews']);
+Route::post('/reviews/sync', [EcommerceApiController::class, 'syncReviews']);
+Route::post('/reviews/submit', [EcommerceApiController::class, 'submitReview']);
+Route::delete('/reviews/{id}', [EcommerceApiController::class, 'deleteReview']);
+

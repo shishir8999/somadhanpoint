@@ -810,4 +810,136 @@ class EcommerceApiController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Custom pages saved permanently!']);
     }
+
+    // ==========================================
+    // 8. REVIEWS (GET, SYNC, SUBMIT, DELETE)
+    // ==========================================
+    public function getReviews(Request $request)
+    {
+        $reviews = [];
+        try {
+            if (DB::connection()->getPdo()) {
+                $status = $request->query('status');
+                $query = Review::orderBy('id', 'desc');
+                if ($status) {
+                    $query->where('status', $status);
+                }
+                $dbReviews = $query->get();
+                if ($dbReviews->count() > 0) {
+                    $reviews = $dbReviews->map(function ($r) {
+                        return [
+                            'id' => (string)$r->id,
+                            'productId' => $r->product_id,
+                            'reviewerName' => $r->customer_name,
+                            'reviewerPhone' => '—',
+                            'rating' => (int)$r->rating,
+                            'reviewComment' => $r->comment,
+                            'type' => $r->product_id ? 'Product' : 'Global',
+                            'status' => $r->status ?: 'Approved',
+                            'date' => $r->created_at ? $r->created_at->format('F d, Y') : 'Recent',
+                        ];
+                    })->toArray();
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB reviews fetch fallback: " . $e->getMessage());
+        }
+
+        if (empty($reviews)) {
+            $reviews = $this->loadFromFileBackup('reviews', []);
+        }
+
+        return response()->json(['success' => true, 'reviews' => $reviews]);
+    }
+
+    public function syncReviews(Request $request)
+    {
+        $reviews = $request->input('reviews', []);
+        $this->saveToFileBackup('reviews', $reviews);
+
+        try {
+            if (DB::connection()->getPdo()) {
+                foreach ($reviews as $r) {
+                    if (!is_array($r)) continue;
+                    $id = $r['id'] ?? null;
+                    if ($id && is_numeric($id)) {
+                        Review::updateOrCreate(
+                            ['id' => $id],
+                            [
+                                'product_id' => $r['productId'] ?? null,
+                                'customer_name' => $r['reviewerName'] ?? 'Anonymous',
+                                'rating' => (int)($r['rating'] ?? 5),
+                                'comment' => $r['reviewComment'] ?? '',
+                                'status' => $r['status'] ?? 'Approved',
+                            ]
+                        );
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB syncReviews fallback: " . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'Reviews synced permanently!']);
+    }
+
+    public function submitReview(Request $request)
+    {
+        $data = $request->all();
+        $newReview = [
+            'id' => (string)time(),
+            'productId' => $data['productId'] ?? null,
+            'reviewerName' => $data['reviewerName'] ?? 'সম্মানিত ক্রেতা',
+            'reviewerPhone' => $data['reviewerPhone'] ?? '—',
+            'rating' => (int)($data['rating'] ?? 5),
+            'reviewComment' => $data['reviewComment'] ?? '',
+            'type' => !empty($data['productId']) ? 'Product' : 'Global',
+            'status' => 'Pending', // ALWAYS Pending until approved by super admin!
+            'date' => date('F d, Y'),
+        ];
+
+        // Save to file backup
+        $all = $this->loadFromFileBackup('reviews', []);
+        array_unshift($all, $newReview);
+        $this->saveToFileBackup('reviews', $all);
+
+        // Save to database
+        try {
+            if (DB::connection()->getPdo()) {
+                $dbRev = Review::create([
+                    'product_id' => $newReview['productId'],
+                    'customer_name' => $newReview['reviewerName'],
+                    'rating' => $newReview['rating'],
+                    'comment' => $newReview['reviewComment'],
+                    'status' => 'Pending',
+                ]);
+                $newReview['id'] = (string)$dbRev->id;
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB submitReview fallback: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Review submitted successfully. It will be public once approved by Super Admin.',
+            'review' => $newReview
+        ]);
+    }
+
+    public function deleteReview($id)
+    {
+        $reviews = $this->loadFromFileBackup('reviews', []);
+        $updated = array_values(array_filter($reviews, fn($r) => ($r['id'] ?? '') != $id));
+        $this->saveToFileBackup('reviews', $updated);
+
+        try {
+            if (DB::connection()->getPdo()) {
+                Review::where('id', $id)->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::info("DB review delete fallback: " . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'Review deleted successfully']);
+    }
 }
