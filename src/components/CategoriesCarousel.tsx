@@ -64,10 +64,39 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
     };
   }, []);
 
+  // Automatic one-by-one slider moving logic
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  useEffect(() => {
+    if (categories.length <= 2) return;
+
+    const interval = setInterval(() => {
+      if (isInteracting) return;
+      const el = scrollRef.current;
+      if (!el) return;
+
+      // Dynamically measure single item width + gap
+      const itemEl = el.firstElementChild as HTMLElement;
+      const step = itemEl ? itemEl.offsetWidth + 12 : 82;
+
+      // If at end, loop back smoothly to start
+      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 10) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: step, behavior: 'smooth' });
+      }
+    }, 2400);
+
+    return () => clearInterval(interval);
+  }, [categories.length, isInteracting]);
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({
-        left: direction === 'left' ? -200 : 200,
+      const el = scrollRef.current;
+      const itemEl = el.firstElementChild as HTMLElement;
+      const step = itemEl ? (itemEl.offsetWidth + 12) * 2 : 164;
+      el.scrollBy({
+        left: direction === 'left' ? -step : step,
         behavior: 'smooth',
       });
     }
@@ -88,7 +117,11 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
         {/* Categories Row */}
         <div
           ref={scrollRef}
-          className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth px-2 sm:px-6 py-1.5 w-full justify-start sm:justify-between touch-pan-x"
+          onMouseEnter={() => setIsInteracting(true)}
+          onMouseLeave={() => setIsInteracting(false)}
+          onTouchStart={() => setIsInteracting(true)}
+          onTouchEnd={() => setTimeout(() => setIsInteracting(false), 2500)}
+          className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth px-2 sm:px-6 py-1.5 w-full justify-start touch-pan-x"
         >
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.name;
