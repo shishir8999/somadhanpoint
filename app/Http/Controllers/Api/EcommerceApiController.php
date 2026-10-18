@@ -89,10 +89,10 @@ class EcommerceApiController extends Controller
                         'tiktok' => $row->tiktok ?: 'https://www.tiktok.com',
                         'fbPixelId' => $row->fb_pixel_id,
                         'fbApiToken' => $row->fb_api_token,
-                        'logoUrl' => $row->logo_url,
-                        'footerLogoUrl' => $row->footer_logo_url,
+                        'logoUrl' => $row->logo_url ?: '/somadhan-logo.svg',
+                        'footerLogoUrl' => $row->footer_logo_url ?: '/somadhan-logo.svg',
                         'footerLogoBg' => $row->footer_logo_bg ?: 'white_card',
-                        'adminLogoBg' => $row->admin_logo_bg ?: 'white_card',
+                        'adminLogoBg' => $row->admin_logo_bg ?: 'transparent',
                         'showLogoText' => (bool)$row->show_logo_text,
                         'banners' => is_array($row->banners) ? $row->banners : [],
                     ];
