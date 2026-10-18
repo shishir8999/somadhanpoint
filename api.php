@@ -544,7 +544,56 @@ try {
         if ($method === 'GET') {
             $stmt = $pdo->query("SELECT * FROM brands ORDER BY name ASC");
             $rows = $stmt->fetchAll();
-            echo json_encode(['success' => true, 'brands' => $rows], JSON_UNESCAPED_UNICODE);
+            $brands = array_map(function ($b) {
+                return [
+                    'id' => (string)$b['id'],
+                    'name' => $b['name'],
+                    'logoText' => $b['logo_text'] ?? strtoupper($b['name']),
+                    'logoColor' => $b['logo_color'] ?? '',
+                    'imageUrl' => $b['image_url'] ?? null,
+                    'productsCount' => (int)($b['products_count'] ?? 0),
+                    'createdDate' => !empty($b['created_at']) ? date('F d, Y', strtotime($b['created_at'])) : 'July 7, 2026',
+                ];
+            }, $rows);
+            echo json_encode(['success' => true, 'brands' => $brands], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($method === 'POST') {
+            $brands = $body['brands'] ?? [];
+            if (is_array($brands) && count($brands) > 0) {
+                foreach ($brands as $b) {
+                    $bId = (string)($b['id'] ?? ('brand-' . time() . '-' . rand(10, 99)));
+                    $stmt = $pdo->prepare("
+                        INSERT INTO brands (id, name, slug, logo_text, logo_color, image_url, products_count, created_at, updated_at)
+                        VALUES (:id, :name, :slug, :logoText, :logoColor, :img, :cnt, NOW(), NOW())
+                        ON DUPLICATE KEY UPDATE
+                            name = VALUES(name),
+                            logo_text = VALUES(logo_text),
+                            logo_color = VALUES(logo_color),
+                            image_url = VALUES(image_url),
+                            products_count = VALUES(products_count),
+                            updated_at = NOW()
+                    ");
+                    $stmt->execute([
+                        ':id' => $bId,
+                        ':name' => $b['name'] ?? 'Brand',
+                        ':slug' => preg_replace('/[^a-z0-9\-]/', '', strtolower(str_replace(' ', '-', $b['name'] ?? 'brand'))) . '-' . substr($bId, -4),
+                        ':logoText' => $b['logoText'] ?? null,
+                        ':logoColor' => $b['logoColor'] ?? null,
+                        ':img' => $b['imageUrl'] ?? null,
+                        ':cnt' => (int)($b['productsCount'] ?? 0),
+                    ]);
+                }
+            }
+            echo json_encode(['success' => true, 'message' => 'Brands synced successfully']);
+            exit;
+        }
+
+        if ($method === 'DELETE' && $resourceId) {
+            $stmt = $pdo->prepare("DELETE FROM brands WHERE id = :id");
+            $stmt->execute([':id' => $resourceId]);
+            echo json_encode(['success' => true, 'message' => 'Brand deleted successfully']);
             exit;
         }
     }
@@ -646,7 +695,101 @@ try {
     }
 
     // ---------------------------------------------------------------------
-    // 6. GIT FIX (/api/git-fix) - Clears merge conflicts in cPanel Git UI
+    // 6. REVIEWS (/api/reviews) - Moderation & Permanent MySQL Database
+    // ---------------------------------------------------------------------
+    if ($resource === 'reviews') {
+        if ($method === 'GET') {
+            $status = $_GET['status'] ?? null;
+            if ($status) {
+                $stmt = $pdo->prepare("SELECT * FROM reviews WHERE status = :st ORDER BY id DESC");
+                $stmt->execute([':st' => $status]);
+            } else {
+                $stmt = $pdo->query("SELECT * FROM reviews ORDER BY id DESC");
+            }
+            $rows = $stmt->fetchAll();
+            $reviews = array_map(function ($r) {
+                return [
+                    'id' => (string)$r['id'],
+                    'productId' => $r['product_id'] ?? null,
+                    'reviewerName' => $r['customer_name'],
+                    'reviewerPhone' => '—',
+                    'rating' => (int)($r['rating'] ?? 5),
+                    'reviewComment' => $r['comment'] ?? '',
+                    'type' => !empty($r['product_id']) ? 'Product' : 'Global',
+                    'status' => $r['status'] ?: 'Approved',
+                    'date' => !empty($r['created_at']) ? date('F d, Y', strtotime($r['created_at'])) : 'Recent',
+                ];
+            }, $rows);
+            echo json_encode(['success' => true, 'reviews' => $reviews], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($method === 'POST') {
+            // Check if customer submission
+            if ($action === 'submit' || isset($body['reviewComment'])) {
+                $revData = isset($body['reviewComment']) && !isset($body['reviews']) ? $body : ($body['review'] ?? $body);
+                $stmt = $pdo->prepare("
+                    INSERT INTO reviews (product_id, customer_name, rating, comment, verified_purchase, status, created_at, updated_at)
+                    VALUES (:pid, :name, :rating, :comment, 1, 'Pending', NOW(), NOW())
+                ");
+                $stmt->execute([
+                    ':pid' => $revData['productId'] ?? null,
+                    ':name' => $revData['reviewerName'] ?? 'সম্মানিত ক্রেতা',
+                    ':rating' => (int)($revData['rating'] ?? 5),
+                    ':comment' => $revData['reviewComment'] ?? '',
+                ]);
+                $newId = $pdo->lastInsertId();
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Review submitted for moderation. It will be public once Super Admin approves.',
+                    'id' => $newId,
+                    'status' => 'Pending'
+                ]);
+                exit;
+            }
+
+            // Otherwise sync list from Admin
+            $revs = $body['reviews'] ?? [];
+            if (is_array($revs) && count($revs) > 0) {
+                foreach ($revs as $r) {
+                    $rId = (string)($r['id'] ?? '');
+                    if ($rId && is_numeric($rId)) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO reviews (id, product_id, customer_name, rating, comment, verified_purchase, status, created_at, updated_at)
+                            VALUES (:id, :pid, :name, :rating, :comment, 1, :st, NOW(), NOW())
+                            ON DUPLICATE KEY UPDATE
+                                product_id = VALUES(product_id),
+                                customer_name = VALUES(customer_name),
+                                rating = VALUES(rating),
+                                comment = VALUES(comment),
+                                status = VALUES(status),
+                                updated_at = NOW()
+                        ");
+                        $stmt->execute([
+                            ':id' => $rId,
+                            ':pid' => $r['productId'] ?? null,
+                            ':name' => $r['reviewerName'] ?? 'Anonymous',
+                            ':rating' => (int)($r['rating'] ?? 5),
+                            ':comment' => $r['reviewComment'] ?? '',
+                            ':st' => $r['status'] ?? 'Approved',
+                        ]);
+                    }
+                }
+            }
+            echo json_encode(['success' => true, 'message' => 'Reviews synced successfully']);
+            exit;
+        }
+
+        if ($method === 'DELETE' && $resourceId) {
+            $stmt = $pdo->prepare("DELETE FROM reviews WHERE id = :id");
+            $stmt->execute([':id' => $resourceId]);
+            echo json_encode(['success' => true, 'message' => 'Review deleted successfully']);
+            exit;
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // 7. GIT FIX (/api/git-fix) - Clears merge conflicts in cPanel Git UI
     // ---------------------------------------------------------------------
     if ($resource === 'git-fix') {
         $dirs = [
