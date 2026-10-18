@@ -52,7 +52,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
 } catch (PDOException $e) {
-    // If local test database or fallback
     try {
         $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=somadhanpoint;charset=utf8mb4", "root", "", [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -67,6 +66,35 @@ try {
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
+}
+
+// Ensure schema columns exist dynamically (Self-healing migration)
+try {
+    $pCols = $pdo->query("SHOW COLUMNS FROM products")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('price', $pCols) && in_array('current_price', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN price decimal(12,2) DEFAULT NULL");
+        $pdo->exec("UPDATE products SET price = current_price WHERE price IS NULL");
+    }
+    if (!in_array('current_price', $pCols) && in_array('price', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN current_price decimal(12,2) DEFAULT NULL");
+        $pdo->exec("UPDATE products SET current_price = price WHERE current_price IS NULL");
+    }
+    if (!in_array('stock', $pCols) && in_array('stock_quantity', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN stock int(11) DEFAULT 100");
+        $pdo->exec("UPDATE products SET stock = stock_quantity WHERE stock IS NULL");
+    }
+    if (!in_array('stock_quantity', $pCols) && in_array('stock', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN stock_quantity int(11) DEFAULT 100");
+        $pdo->exec("UPDATE products SET stock_quantity = stock WHERE stock_quantity IS NULL");
+    }
+    if (!in_array('stock_color', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN stock_color varchar(50) DEFAULT 'green'");
+    }
+    if (!in_array('discount_percent', $pCols)) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN discount_percent varchar(50) DEFAULT NULL");
+    }
+} catch (Exception $e) {
+    // Ignore schema sync error if tables are being set up
 }
 
 // 3. Determine Endpoint and Method
@@ -139,6 +167,13 @@ try {
 
         if ($method === 'POST') {
             $data = $body;
+
+            // Ensure row 1 exists
+            $chk = $pdo->query("SELECT id FROM store_settings LIMIT 1")->fetch();
+            if (!$chk) {
+                $pdo->prepare("INSERT INTO store_settings (id, site_name, created_at, updated_at) VALUES (1, 'Somadhan Point', NOW(), NOW())")->execute();
+            }
+
             $stmt = $pdo->prepare("
                 UPDATE store_settings SET
                     site_name = :site_name,
@@ -229,15 +264,18 @@ try {
         // SAVE Single Product (/api/products/save)
         if ($method === 'POST' && $resourceId === 'save') {
             $p = $body;
-            $prodId = $p['id'] ?? null;
+            $prodId = !empty($p['id']) ? (string)$p['id'] : null;
 
-            // Check if exists
             $exists = false;
-            if ($prodId && is_numeric($prodId)) {
+            if ($prodId) {
                 $chk = $pdo->prepare("SELECT id FROM products WHERE id = :id LIMIT 1");
                 $chk->execute([':id' => $prodId]);
                 $exists = (bool)$chk->fetch();
             }
+
+            $price = floatval($p['price'] ?? $p['currentPrice'] ?? 0);
+            $origPrice = !empty($p['originalPrice']) ? floatval($p['originalPrice']) : null;
+            $stock = intval($p['stock'] ?? $p['stock_quantity'] ?? 100);
 
             if ($exists) {
                 // UPDATE
@@ -246,12 +284,14 @@ try {
                         name = :name,
                         visual_type = :visual_type,
                         price = :price,
+                        current_price = :current_price,
                         original_price = :original_price,
                         discount_percent = :discount_percent,
                         category = :category,
                         subcategory = :subcategory,
                         brand = :brand,
                         stock = :stock,
+                        stock_quantity = :stock_quantity,
                         stock_color = :stock_color,
                         section = :section,
                         sku = :sku,
@@ -270,13 +310,15 @@ try {
                     ':id' => $prodId,
                     ':name' => $p['name'] ?? 'Unnamed Product',
                     ':visual_type' => $p['visualType'] ?? 'formal_shoe',
-                    ':price' => floatval($p['price'] ?? 0),
-                    ':original_price' => !empty($p['originalPrice']) ? floatval($p['originalPrice']) : null,
-                    ':discount_percent' => $p['discountPercent'] ?? null,
+                    ':price' => $price,
+                    ':current_price' => $price,
+                    ':original_price' => $origPrice,
+                    ':discount_percent' => $p['discountPercent'] ?? $p['badge'] ?? null,
                     ':category' => $p['category'] ?? 'General',
                     ':subcategory' => $p['subcategory'] ?? null,
                     ':brand' => $p['brand'] ?? 'Somadhan',
-                    ':stock' => intval($p['stock'] ?? 100),
+                    ':stock' => $stock,
+                    ':stock_quantity' => $stock,
                     ':stock_color' => $p['stockColor'] ?? 'green',
                     ':section' => $p['section'] ?? 'hot_deals',
                     ':sku' => $p['sku'] ?? ('SP-' . rand(1000, 9999)),
@@ -291,27 +333,33 @@ try {
                 ]);
             } else {
                 // INSERT
+                if (!$prodId) {
+                    $prodId = 'prod-' . time() . '-' . rand(100, 999);
+                }
                 $stmt = $pdo->prepare("
                     INSERT INTO products (
-                        name, visual_type, price, original_price, discount_percent, category,
-                        subcategory, brand, stock, stock_color, section, sku, badge,
+                        id, name, visual_type, price, current_price, original_price, discount_percent, category,
+                        subcategory, brand, stock, stock_quantity, stock_color, section, sku, badge,
                         description, image_url, thumbnail_url, gallery_images, sizes, colors, in_stock, created_at, updated_at
                     ) VALUES (
-                        :name, :visual_type, :price, :original_price, :discount_percent, :category,
-                        :subcategory, :brand, :stock, :stock_color, :section, :sku, :badge,
+                        :id, :name, :visual_type, :price, :current_price, :original_price, :discount_percent, :category,
+                        :subcategory, :brand, :stock, :stock_quantity, :stock_color, :section, :sku, :badge,
                         :description, :image_url, :thumbnail_url, :gallery_images, :sizes, :colors, :in_stock, NOW(), NOW()
                     )
                 ");
                 $stmt->execute([
+                    ':id' => $prodId,
                     ':name' => $p['name'] ?? 'Unnamed Product',
                     ':visual_type' => $p['visualType'] ?? 'formal_shoe',
-                    ':price' => floatval($p['price'] ?? 0),
-                    ':original_price' => !empty($p['originalPrice']) ? floatval($p['originalPrice']) : null,
-                    ':discount_percent' => $p['discountPercent'] ?? null,
+                    ':price' => $price,
+                    ':current_price' => $price,
+                    ':original_price' => $origPrice,
+                    ':discount_percent' => $p['discountPercent'] ?? $p['badge'] ?? null,
                     ':category' => $p['category'] ?? 'General',
                     ':subcategory' => $p['subcategory'] ?? null,
                     ':brand' => $p['brand'] ?? 'Somadhan',
-                    ':stock' => intval($p['stock'] ?? 100),
+                    ':stock' => $stock,
+                    ':stock_quantity' => $stock,
                     ':stock_color' => $p['stockColor'] ?? 'green',
                     ':section' => $p['section'] ?? 'hot_deals',
                     ':sku' => $p['sku'] ?? ('SP-' . rand(1000, 9999)),
@@ -324,15 +372,14 @@ try {
                     ':colors' => json_encode($p['colors'] ?? [], JSON_UNESCAPED_UNICODE),
                     ':in_stock' => isset($p['inStock']) ? ($p['inStock'] ? 1 : 0) : 1,
                 ]);
-                $prodId = $pdo->lastInsertId();
             }
 
             // Sync Color Variants if present
             if (!empty($p['colorVariants']) && is_array($p['colorVariants'])) {
                 $pdo->prepare("DELETE FROM product_color_variants WHERE product_id = :id")->execute([':id' => $prodId]);
                 $varStmt = $pdo->prepare("
-                    INSERT INTO product_color_variants (product_id, color_name, color_code, image_url, stock)
-                    VALUES (:pid, :cname, :ccode, :cimg, :cstock)
+                    INSERT INTO product_color_variants (product_id, name, hex, image, created_at, updated_at)
+                    VALUES (:pid, :cname, :ccode, :cimg, NOW(), NOW())
                 ");
                 foreach ($p['colorVariants'] as $v) {
                     $varStmt->execute([
@@ -340,7 +387,6 @@ try {
                         ':cname' => $v['color'] ?? $v['colorName'] ?? 'Color',
                         ':ccode' => $v['colorCode'] ?? '#000000',
                         ':cimg' => $v['image'] ?? $v['imageUrl'] ?? null,
-                        ':cstock' => intval($v['stock'] ?? 50),
                     ]);
                 }
             }
@@ -353,17 +399,19 @@ try {
         if ($method === 'POST' && $resourceId === 'sync') {
             $products = $body['products'] ?? [];
             if (is_array($products)) {
-                // If syncing full list, keep database updated
                 $keepIds = [];
                 foreach ($products as $p) {
-                    if (!empty($p['id']) && is_numeric($p['id'])) {
-                        $keepIds[] = intval($p['id']);
+                    if (!empty($p['id'])) {
+                        $keepIds[] = (string)$p['id'];
                     }
                 }
-                // Delete products in database that are no longer in the list (if non-empty)
                 if (count($keepIds) > 0) {
-                    $inClause = implode(',', $keepIds);
-                    $pdo->exec("DELETE FROM products WHERE id NOT IN ($inClause)");
+                    $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
+                    $delStmt = $pdo->prepare("DELETE FROM products WHERE id NOT IN ($placeholders)");
+                    $delStmt->execute($keepIds);
+                } else {
+                    $pdo->exec("DELETE FROM product_color_variants");
+                    $pdo->exec("DELETE FROM products");
                 }
             }
             echo json_encode(['success' => true, 'message' => 'Products synchronized with MySQL database']);
@@ -372,7 +420,7 @@ try {
 
         // GET All Products (/api/products)
         if ($method === 'GET') {
-            $stmt = $pdo->query("SELECT * FROM products ORDER BY id DESC");
+            $stmt = $pdo->query("SELECT * FROM products ORDER BY created_at DESC, id DESC");
             $rows = $stmt->fetchAll();
 
             $products = [];
@@ -384,12 +432,12 @@ try {
 
                 $colorVariants = array_map(function($v) {
                     return [
-                        'color' => $v['color_name'],
-                        'colorName' => $v['color_name'],
-                        'colorCode' => $v['color_code'],
-                        'image' => $v['image_url'],
-                        'imageUrl' => $v['image_url'],
-                        'stock' => intval($v['stock']),
+                        'color' => $v['name'] ?? $v['color_name'] ?? 'Color',
+                        'colorName' => $v['name'] ?? $v['color_name'] ?? 'Color',
+                        'colorCode' => $v['hex'] ?? $v['color_code'] ?? '#000000',
+                        'image' => $v['image'] ?? $v['image_url'] ?? null,
+                        'imageUrl' => $v['image'] ?? $v['image_url'] ?? null,
+                        'stock' => isset($v['stock']) ? intval($v['stock']) : 50,
                     ];
                 }, $vars);
 
@@ -397,30 +445,34 @@ try {
                 $sizes = json_decode($r['sizes'] ?? '[]', true) ?: [];
                 $colors = json_decode($r['colors'] ?? '[]', true) ?: [];
 
+                $price = isset($r['price']) && $r['price'] !== null ? floatval($r['price']) : (isset($r['current_price']) ? floatval($r['current_price']) : 0);
+                $origPrice = ($r['original_price'] !== null && $r['original_price'] !== '') ? floatval($r['original_price']) : null;
+                $stock = isset($r['stock']) && $r['stock'] !== null ? intval($r['stock']) : (isset($r['stock_quantity']) ? intval($r['stock_quantity']) : 100);
+
                 $products[] = [
                     'id' => (string)$r['id'],
                     'sl' => $idx + 1,
                     'name' => $r['name'],
-                    'visualType' => $r['visual_type'],
-                    'price' => floatval($r['price']),
-                    'originalPrice' => $r['original_price'] !== null ? floatval($r['original_price']) : null,
-                    'discountPercent' => $r['discount_percent'],
-                    'category' => $r['category'],
-                    'subcategory' => $r['subcategory'],
-                    'brand' => $r['brand'],
-                    'stock' => intval($r['stock']),
-                    'stockColor' => $r['stock_color'] ?: 'green',
+                    'visualType' => $r['visual_type'] ?? 'formal_shoe',
+                    'price' => $price,
+                    'originalPrice' => $origPrice,
+                    'discountPercent' => $r['badge'] ?? $r['discount_percent'] ?? null,
+                    'category' => $r['category'] ?? 'General',
+                    'subcategory' => $r['subcategory'] ?? null,
+                    'brand' => $r['brand'] ?? 'Somadhan',
+                    'stock' => $stock,
+                    'stockColor' => !empty($r['stock_color']) ? $r['stock_color'] : ($stock > 10 ? 'green' : 'orange'),
                     'section' => $r['section'] ?: 'hot_deals',
-                    'sku' => $r['sku'],
+                    'sku' => $r['sku'] ?: ('SP-' . $r['id']),
                     'badge' => $r['badge'],
-                    'description' => $r['description'],
+                    'description' => $r['description'] ?? '',
                     'imageUrl' => $r['image_url'] ?: ($gallery[0] ?? '/placeholder.png'),
                     'thumbnailUrl' => $r['thumbnail_url'] ?: $r['image_url'] ?: ($gallery[0] ?? '/placeholder.png'),
                     'galleryImages' => $gallery,
                     'sizes' => $sizes,
                     'colors' => $colors,
                     'colorVariants' => $colorVariants,
-                    'inStock' => (bool)$r['in_stock'],
+                    'inStock' => isset($r['in_stock']) ? (bool)$r['in_stock'] : true,
                 ];
             }
 
@@ -441,107 +493,147 @@ try {
                     'id' => (string)$c['id'],
                     'name' => $c['name'],
                     'slug' => $c['slug'],
-                    'visualType' => $c['visual_type'] ?: 'cat_panjabi',
+                    'visualType' => $c['visual_type'],
                     'imageUrl' => $c['image_url'],
-                    'productCount' => intval($c['product_count'] ?? 0),
-                    'status' => $c['status'] ?: 'Active',
                 ];
             }, $rows);
             echo json_encode(['success' => true, 'categories' => $categories], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
-        if ($method === 'DELETE' && $resourceId) {
-            $pdo->prepare("DELETE FROM categories WHERE id = :id")->execute([':id' => $resourceId]);
-            echo json_encode(['success' => true, 'message' => 'Category deleted from database']);
+        if ($method === 'POST') {
+            $cats = $body['categories'] ?? [];
+            if (is_array($cats) && count($cats) > 0) {
+                foreach ($cats as $c) {
+                    $cId = (string)($c['id'] ?? ('cat-' . time() . '-' . rand(10, 99)));
+                    $stmt = $pdo->prepare("
+                        INSERT INTO categories (id, name, slug, visual_type, image_url, created_at, updated_at)
+                        VALUES (:id, :name, :slug, :vtype, :img, NOW(), NOW())
+                        ON DUPLICATE KEY UPDATE
+                            name = VALUES(name),
+                            visual_type = VALUES(visual_type),
+                            image_url = VALUES(image_url),
+                            updated_at = NOW()
+                    ");
+                    $stmt->execute([
+                        ':id' => $cId,
+                        ':name' => $c['name'] ?? 'Category',
+                        ':slug' => $c['slug'] ?? ('cat-' . rand(100, 999)),
+                        ':vtype' => $c['visualType'] ?? null,
+                        ':img' => $c['imageUrl'] ?? null,
+                    ]);
+                }
+            }
+            echo json_encode(['success' => true, 'message' => 'Categories synced']);
             exit;
         }
 
-        if ($method === 'POST') {
-            // sync categories
-            $cats = $body['categories'] ?? [];
-            if (is_array($cats)) {
-                foreach ($cats as $c) {
-                    if (empty($c['name'])) continue;
-                    $chk = $pdo->prepare("SELECT id FROM categories WHERE name = :name LIMIT 1");
-                    $chk->execute([':name' => $c['name']]);
-                    $exists = $chk->fetch();
-                    if ($exists) {
-                        $upd = $pdo->prepare("UPDATE categories SET visual_type = :vt, image_url = :img WHERE id = :id");
-                        $upd->execute([':vt' => $c['visualType'] ?? 'cat_panjabi', ':img' => $c['imageUrl'] ?? null, ':id' => $exists['id']]);
-                    } else {
-                        $ins = $pdo->prepare("INSERT INTO categories (name, slug, visual_type, image_url, status) VALUES (:name, :slug, :vt, :img, 'Active')");
-                        $ins->execute([
-                            ':name' => $c['name'],
-                            ':slug' => preg_replace('/[^a-z0-9]+/i', '-', strtolower($c['name'])),
-                            ':vt' => $c['visualType'] ?? 'cat_panjabi',
-                            ':img' => $c['imageUrl'] ?? null,
-                        ]);
-                    }
-                }
-            }
-            echo json_encode(['success' => true, 'message' => 'Categories synced successfully']);
+        if ($method === 'DELETE' && $resourceId) {
+            $stmt = $pdo->prepare("DELETE FROM categories WHERE id = :id OR slug = :id2");
+            $stmt->execute([':id' => $resourceId, ':id2' => $resourceId]);
+            echo json_encode(['success' => true, 'message' => 'Category deleted']);
             exit;
         }
     }
 
     // ---------------------------------------------------------------------
-    // 4. BRANDS (/api/brands, /api/brands/{id})
+    // 4. BRANDS (/api/brands)
     // ---------------------------------------------------------------------
     if ($resource === 'brands') {
         if ($method === 'GET') {
-            $stmt = $pdo->query("SELECT * FROM brands ORDER BY id ASC");
+            $stmt = $pdo->query("SELECT * FROM brands ORDER BY name ASC");
             $rows = $stmt->fetchAll();
-            $brands = array_map(function($b) {
-                return [
-                    'id' => (string)$b['id'],
-                    'name' => $b['name'],
-                    'logoUrl' => $b['logo_url'],
-                    'status' => $b['status'] ?: 'Active',
-                ];
-            }, $rows);
-            echo json_encode(['success' => true, 'brands' => $brands], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        if ($method === 'DELETE' && $resourceId) {
-            $pdo->prepare("DELETE FROM brands WHERE id = :id")->execute([':id' => $resourceId]);
-            echo json_encode(['success' => true, 'message' => 'Brand deleted from database']);
+            echo json_encode(['success' => true, 'brands' => $rows], JSON_UNESCAPED_UNICODE);
             exit;
         }
     }
 
     // ---------------------------------------------------------------------
-    // 5. ORDERS (/api/orders)
+    // 5. ORDERS (/api/orders, /api/orders/create)
     // ---------------------------------------------------------------------
     if ($resource === 'orders') {
+        if ($method === 'POST') {
+            $ord = $body;
+            $orderId = 'ORD-' . strtoupper(substr(uniqid(), -6));
+            $orderNumber = 'SP-' . rand(10000, 99999);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO orders (
+                    id, order_number, customer_name, customer_phone, customer_address,
+                    payment_method, delivery_area, subtotal, delivery_charge, discount, total,
+                    status, created_at, updated_at
+                ) VALUES (
+                    :id, :num, :name, :phone, :addr, :pay, :area, :sub, :del, :disc, :tot, 'Pending', NOW(), NOW()
+                )
+            ");
+            $stmt->execute([
+                ':id' => $orderId,
+                ':num' => $orderNumber,
+                ':name' => $ord['customerName'] ?? $ord['name'] ?? 'Guest Customer',
+                ':phone' => $ord['customerPhone'] ?? $ord['phone'] ?? '',
+                ':addr' => $ord['customerAddress'] ?? $ord['address'] ?? '',
+                ':pay' => $ord['paymentMethod'] ?? 'cod',
+                ':area' => $ord['deliveryArea'] ?? 'inside_dhaka',
+                ':sub' => floatval($ord['subtotal'] ?? 0),
+                ':del' => floatval($ord['deliveryCharge'] ?? 60),
+                ':disc' => floatval($ord['discount'] ?? 0),
+                ':tot' => floatval($ord['total'] ?? 0),
+            ]);
+
+            // Save order items
+            if (!empty($ord['items']) && is_array($ord['items'])) {
+                $itemStmt = $pdo->prepare("
+                    INSERT INTO order_items (
+                        order_id, product_id, product_name, quantity, unit_price,
+                        selected_color, selected_size, created_at, updated_at
+                    ) VALUES (
+                        :oid, :pid, :pname, :qty, :uprice, :color, :size, NOW(), NOW()
+                    )
+                ");
+                foreach ($ord['items'] as $it) {
+                    $itemStmt->execute([
+                        ':oid' => $orderId,
+                        ':pid' => $it['productId'] ?? $it['id'] ?? null,
+                        ':pname' => $it['name'] ?? 'Product',
+                        ':qty' => intval($it['quantity'] ?? 1),
+                        ':uprice' => floatval($it['price'] ?? 0),
+                        ':color' => $it['selectedColor'] ?? null,
+                        ':size' => $it['selectedSize'] ?? null,
+                    ]);
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Order created successfully in database',
+                'orderNumber' => $orderNumber,
+                'orderId' => $orderId,
+            ]);
+            exit;
+        }
+
         if ($method === 'GET') {
-            $stmt = $pdo->query("SELECT * FROM orders ORDER BY id DESC LIMIT 200");
+            $stmt = $pdo->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 100");
             $rows = $stmt->fetchAll();
             $orders = array_map(function($o) use ($pdo) {
-                $itemStmt = $pdo->prepare("SELECT * FROM order_items WHERE order_id = :oid");
-                $itemStmt->execute([':oid' => $o['id']]);
-                $items = $itemStmt->fetchAll();
-
+                $iStmt = $pdo->prepare("SELECT * FROM order_items WHERE order_id = :oid");
+                $iStmt->execute([':oid' => $o['id']]);
+                $items = $iStmt->fetchAll();
                 return [
-                    'id' => (string)$o['id'],
-                    'orderNumber' => $o['order_number'] ?: ('#' . $o['id']),
+                    'id' => $o['id'],
+                    'orderNumber' => $o['order_number'],
                     'customerName' => $o['customer_name'],
-                    'phone' => $o['phone'],
-                    'address' => $o['address'],
-                    'district' => $o['district'],
-                    'amount' => floatval($o['amount']),
-                    'deliveryCharge' => floatval($o['delivery_charge']),
-                    'advancePayment' => floatval($o['advance_payment']),
-                    'status' => $o['status'] ?: 'Pending',
-                    'notes' => $o['notes'],
+                    'customerPhone' => $o['customer_phone'],
+                    'customerAddress' => $o['customer_address'],
+                    'total' => floatval($o['total']),
+                    'status' => $o['status'],
                     'items' => array_map(function($i) {
                         return [
                             'name' => $i['product_name'],
                             'quantity' => intval($i['quantity']),
-                            'price' => floatval($i['price']),
-                            'color' => $i['color'],
-                            'size' => $i['size'],
+                            'price' => floatval($i['unit_price'] ?? $i['price'] ?? 0),
+                            'color' => $i['selected_color'] ?? $i['color'] ?? null,
+                            'size' => $i['selected_size'] ?? $i['size'] ?? null,
                         ];
                     }, $items),
                     'createdAt' => $o['created_at'],
