@@ -100,13 +100,8 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   const triggerSuccessPopup = (title: string, message: string, subMessage?: string) => {
     setSuccessModal({
       isOpen: true,
-      title,
-      message,
-      subMessage,
-    });
-    triggerGlobalSuccessModal({
-      title,
-      message,
+      title: title || 'সফলভাবে সেভ হয়েছে!',
+      message: message || 'সকল পরিবর্তন ডাটাবেসে সফলভাবে সেভ করা হয়েছে।',
       subMessage,
     });
   };
