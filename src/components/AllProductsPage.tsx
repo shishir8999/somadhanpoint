@@ -105,6 +105,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
         console.error('Failed to load products from localStorage', e);
       }
     }
+    return [];
     return [
     {
       id: 'prod-1',
@@ -375,22 +376,6 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     });
   }, []);
 
-  // Sync productsList with localStorage and server database
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    try {
-      localStorage.setItem('ummah_admin_products_list', JSON.stringify(productsList));
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('products-updated'));
-    } catch (e) {
-      console.error('Failed to save products to localStorage', e);
-    }
-    // Save permanently to server database
-    saveProductsToDatabase(productsList);
-  }, [productsList]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
