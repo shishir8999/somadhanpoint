@@ -645,6 +645,57 @@ try {
         }
     }
 
+    // ---------------------------------------------------------------------
+    // 6. GIT FIX (/api/git-fix) - Clears merge conflicts in cPanel Git UI
+    // ---------------------------------------------------------------------
+    if ($resource === 'git-fix') {
+        $dirs = [
+            __DIR__,
+            dirname(__DIR__),
+            '/home/somadha1/public_html',
+            '/home/somadha1/repositories/somadhanpoint',
+        ];
+        $gitDir = null;
+        foreach ($dirs as $d) {
+            if (is_dir($d . '/.git')) {
+                $gitDir = $d;
+                break;
+            }
+        }
+
+        $cmds = [
+            "git status",
+            "git reset --hard HEAD",
+            "git clean -fd",
+            "git fetch origin main",
+            "git reset --hard origin/main",
+            "git status",
+        ];
+
+        $results = [];
+        if ($gitDir && function_exists('exec')) {
+            chdir($gitDir);
+            foreach ($cmds as $cmd) {
+                $out = [];
+                $ret = 0;
+                exec($cmd . " 2>&1", $out, $ret);
+                $results[] = [
+                    'cmd' => $cmd,
+                    'output' => $out,
+                    'exitCode' => $ret
+                ];
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'gitDir' => $gitDir,
+            'hasExec' => function_exists('exec'),
+            'results' => $results,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     // Fallback: 404 for unknown endpoint
     http_response_code(404);
     echo json_encode(['success' => false, 'error' => "Unknown endpoint: {$endpoint}"]);
