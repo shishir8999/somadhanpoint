@@ -104,7 +104,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <button
           type="button"
           onClick={() => onAddToCart(product)}
-          className="w-full py-1 text-center text-xs font-bold text-[#990000] bg-white border border-[#990000] rounded-xs hover:bg-red-50 transition-colors cursor-pointer"
+          className="w-full py-1.5 text-center text-[11px] sm:text-xs font-bold text-[#990000] bg-white border border-[#990000] rounded hover:bg-red-50 active:bg-red-100 transition-colors cursor-pointer"
         >
           কার্টে যোগ করুন
         </button>
@@ -113,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <button
           type="button"
           onClick={() => onInstantOrder(product)}
-          className="w-full py-1.5 text-center text-xs font-bold text-white bg-[#990000] hover:bg-[#800000] rounded-xs transition-colors shadow-2xs cursor-pointer"
+          className="w-full py-1.5 text-center text-[11px] sm:text-xs font-bold text-white bg-[#990000] hover:bg-[#800000] active:bg-[#700000] rounded transition-colors shadow-2xs cursor-pointer"
         >
           অর্ডার করুন
         </button>

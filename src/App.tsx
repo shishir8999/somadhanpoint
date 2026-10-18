@@ -1198,7 +1198,7 @@ export default function App() {
 
       {/* Main View: PDP | Products Catalog | Custom Pages (About Us, Contact, Policies) | Homepage */}
       {currentView === 'product_detail' ? (
-        <main className="flex-1 pb-16 md:pb-10">
+        <main className="flex-1 pb-24 md:pb-10">
           <ProductDetailPage
             product={selectedProduct}
             onBackToHome={() => setCurrentView('home')}
@@ -1210,7 +1210,7 @@ export default function App() {
           />
         </main>
       ) : currentView === 'products' ? (
-        <main className="flex-1 pb-16 md:pb-10">
+        <main className="flex-1 pb-24 md:pb-10">
           <ProductsCatalogPage
             allProducts={storeProducts}
             onAddToCart={handleAddToCart}
@@ -1224,7 +1224,7 @@ export default function App() {
           />
         </main>
       ) : ['about_us', 'contact_us', 'privacy_policy', 'terms_conditions', 'return_policy', 'delivery_policy'].includes(currentView) ? (
-        <main className="flex-1 pb-16 md:pb-10">
+        <main className="flex-1 pb-24 md:pb-10">
           <CustomPageView
             pageId={currentView as any}
             onBackToHome={() => setCurrentView('home')}
@@ -1235,7 +1235,7 @@ export default function App() {
           />
         </main>
       ) : (
-        <main className="flex-1 pb-16 md:pb-8 space-y-2">
+        <main className="flex-1 pb-24 md:pb-8 space-y-2">
           {/* Top Hero Banner (Cooking Oil) */}
           <HeroSlider />
 
