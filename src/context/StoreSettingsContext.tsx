@@ -29,6 +29,11 @@ export interface StoreSettings {
   footerLogoBg?: 'white_card' | 'transparent';
   adminLogoBg?: 'white_card' | 'transparent';
   showLogoText?: boolean;
+  supportTitle?: string;
+  supportWelcomeMessage?: string;
+  supportPhone?: string;
+  supportReplyMessage?: string;
+  supportCallButtonText?: string;
   banners: Array<{ id: string; title: string; imageUrl: string; link: string }>;
 }
 
@@ -60,6 +65,11 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   footerLogoBg: 'white_card',
   adminLogoBg: 'transparent',
   showLogoText: false,
+  supportTitle: 'কাস্টমার সাপোর্ট',
+  supportWelcomeMessage: 'আসসালামু আলাইকুম! কোনো পণ্য বা অর্ডার সম্পর্কে জানতে চাইলে এখানে লিখুন অথবা কল করুন 01982708789',
+  supportPhone: '01982708789',
+  supportReplyMessage: 'ধন্যবাদ! আমাদের কাস্টমার সাপোর্ট টিম দ্রুত আপনার সাথে যোগাযোগ করবে। সরাসরি ফোনে কথা বলতে ডায়াল করুন 01982708789',
+  supportCallButtonText: 'কল করুন',
   banners: [
     {
       id: 'b-1',

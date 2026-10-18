@@ -141,6 +141,21 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   const [youtube, setYoutube] = useState(settings.youtube || 'https://www.youtube.com');
   const [tiktok, setTiktok] = useState(settings.tiktok || 'https://www.tiktok.com');
 
+  // Customer Support Chat Settings
+  const [supportTitle, setSupportTitle] = useState(settings.supportTitle || 'কাস্টমার সাপোর্ট');
+  const [supportPhone, setSupportPhone] = useState(settings.supportPhone || settings.phone1 || '01982708789');
+  const [supportWelcomeMessage, setSupportWelcomeMessage] = useState(
+    settings.supportWelcomeMessage ||
+      'আসসালামু আলাইকুম! কোনো পণ্য বা অর্ডার সম্পর্কে জানতে চাইলে এখানে লিখুন অথবা কল করুন 01982708789'
+  );
+  const [supportReplyMessage, setSupportReplyMessage] = useState(
+    settings.supportReplyMessage ||
+      'ধন্যবাদ! আমাদের কাস্টমার সাপোর্ট টিম দ্রুত আপনার সাথে যোগাযোগ করবে। সরাসরি ফোনে কথা বলতে ডায়াল করুন 01982708789'
+  );
+  const [supportCallButtonText, setSupportCallButtonText] = useState(
+    settings.supportCallButtonText || 'কল করুন'
+  );
+
   // Logo Upload State
   const [logoUrl, setLogoUrl] = useState<string>(settings.logoUrl || '');
   const [footerLogoUrl, setFooterLogoUrl] = useState<string>(settings.footerLogoUrl || '');
@@ -261,6 +276,11 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       footerLogoBg,
       adminLogoBg,
       showLogoText,
+      supportTitle,
+      supportPhone,
+      supportWelcomeMessage,
+      supportReplyMessage,
+      supportCallButtonText,
     });
     showToast('Web Settings ও লোগো সফলভাবে সংরক্ষিত হয়েছে এবং সাইটের সর্বত্র লাইভ আপডেট হয়েছে!');
     triggerSuccessPopup(
@@ -2398,6 +2418,93 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                       value={mapEmbed}
                       onChange={(e) => setMapEmbed(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300/80 rounded-lg font-mono text-slate-600 truncate"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Customer Support & Live Chat Settings */}
+              <div className="bg-white rounded-xl border border-rose-200/90 shadow-2xs p-6 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-rose-100">
+                  <MessageSquare className="w-4 h-4 text-[#990000]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      কাস্টমার সাপোর্ট ও লাইভ চ্যাট মেসেজ সেটিংস (Live Chat & Customer Support)
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      ওয়েবসাইটের নিচের চ্যাট পপআপের স্বাগতম মেসেজ, সাপোর্ট ফোন নম্বর এবং কল বাটনের লেখা পরিবর্তন করুন
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      স্বাগতম মেসেজ (Welcome Message - কাস্টমার চ্যাট ওপেন করলে দেখতে পাবেন)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={supportWelcomeMessage}
+                      onChange={(e) => setSupportWelcomeMessage(e.target.value)}
+                      placeholder="আসসালামু আলাইকুম! কোনো পণ্য বা অর্ডার সম্পর্কে জানতে চাইলে এখানে লিখুন অথবা কল করুন..."
+                      className="w-full px-3 py-2 text-xs border border-rose-300/80 rounded-lg text-slate-800 leading-relaxed focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        সাপোর্ট কল নম্বর (Support Call Phone)
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={supportPhone}
+                          onChange={(e) => setSupportPhone(e.target.value)}
+                          placeholder="01982708789"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300/80 rounded-lg font-mono text-slate-800 focus:outline-none focus:border-[#990000]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        কল বাটন টেক্সট (Call Button Label)
+                      </label>
+                      <input
+                        type="text"
+                        value={supportCallButtonText}
+                        onChange={(e) => setSupportCallButtonText(e.target.value)}
+                        placeholder="যেমন: কল করুন"
+                        className="w-full px-3 py-2 text-xs border border-rose-300/80 rounded-lg text-slate-800 focus:outline-none focus:border-[#990000]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        সাপোর্ট টাইটেল (Support Title)
+                      </label>
+                      <input
+                        type="text"
+                        value={supportTitle}
+                        onChange={(e) => setSupportTitle(e.target.value)}
+                        placeholder="যেমন: কাস্টমার সাপোর্ট"
+                        className="w-full px-3 py-2 text-xs border border-rose-300/80 rounded-lg text-slate-800 focus:outline-none focus:border-[#990000]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      অটো রিপ্লাই বার্তা (গ্রাহক মেসেজ পাঠানোর পর স্বয়ংক্রিয় রিপ্লাই)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={supportReplyMessage}
+                      onChange={(e) => setSupportReplyMessage(e.target.value)}
+                      placeholder="ধন্যবাদ! আমাদের কাস্টমার সাপোর্ট টিম দ্রুত আপনার সাথে যোগাযোগ করবে..."
+                      className="w-full px-3 py-2 text-xs border border-rose-300/80 rounded-lg text-slate-800 leading-relaxed focus:outline-none focus:border-[#990000]"
                     />
                   </div>
                 </div>
