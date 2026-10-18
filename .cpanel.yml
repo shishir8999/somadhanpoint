@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/somadha1/public_html/
+    - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp somadhanpoint.sql $DEPLOYPATH
+    - /usr/bin/php $DEPLOYPATH/cpanel-migrate.php auto

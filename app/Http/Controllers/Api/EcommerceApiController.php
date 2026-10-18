@@ -56,11 +56,61 @@ class EcommerceApiController extends Controller
         return $default;
     }
 
+    public static function autoMigrateIfEmpty()
+    {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        try {
+            if (!DB::connection()->getPdo()) return;
+
+            $hasTables = DB::select("SHOW TABLES LIKE 'store_settings'");
+            if (empty($hasTables)) {
+                $sqlPaths = [
+                    public_path('somadhanpoint.sql'),
+                    base_path('somadhanpoint.sql'),
+                    __DIR__ . '/../../../../somadhanpoint.sql',
+                    __DIR__ . '/../../../../public/somadhanpoint.sql',
+                ];
+                $sqlContent = null;
+                foreach ($sqlPaths as $path) {
+                    if (File::exists($path) && File::size($path) > 500) {
+                        $sqlContent = File::get($path);
+                        break;
+                    }
+                }
+
+                if (!$sqlContent) {
+                    $sqlContent = @file_get_contents('https://raw.githubusercontent.com/shishir8999/somadhanpoint/main/somadhanpoint.sql');
+                }
+
+                if ($sqlContent && strlen($sqlContent) > 500) {
+                    DB::statement("SET FOREIGN_KEY_CHECKS = 0;");
+                    $queries = preg_split('/;\s*[\r\n]+/', $sqlContent);
+                    foreach ($queries as $q) {
+                        $q = trim($q);
+                        if (!empty($q) && strpos($q, '/*') !== 0 && strpos($q, '--') !== 0) {
+                            try {
+                                DB::statement($q);
+                            } catch (\Throwable $te) {}
+                        }
+                    }
+                    DB::statement("SET FOREIGN_KEY_CHECKS = 1;");
+                    Log::info("Auto-migrated database from GitHub/SQL successfully.");
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("Auto-migration check note: " . $e->getMessage());
+        }
+    }
+
     // ==========================================
     // 1. STORE SETTINGS (GET & POST)
     // ==========================================
     public function getSettings()
     {
+        self::autoMigrateIfEmpty();
         $settings = null;
         try {
             if (DB::connection()->getPdo()) {

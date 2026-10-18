@@ -60,8 +60,9 @@ foreach ($sqlPaths as $sp) {
     }
 }
 
-// If form submitted
-if (isset($_POST['run_migrate'])) {
+// If form submitted or triggered automatically via Webhook/CLI
+$isAuto = isset($_GET['auto']) || (php_sapi_name() === 'cli' && isset($argv) && in_array('auto', $argv));
+if (isset($_POST['run_migrate']) || $isAuto) {
     try {
         if (empty($dbName) || empty($dbUser)) {
             throw new Exception("ডাটাবেসের নাম এবং ইউজারনেম আবশ্যক।");
@@ -127,9 +128,29 @@ if (isset($_POST['run_migrate'])) {
         $resultType = 'success';
         $resultMessage = "অভিনন্দন! মোট " . count($tables) . " টি ডাটাবেস টেবিল সফলভাবে '{$dbName}' ডাটাবেসে তৈরি ও সিঙ্ক করা হয়েছে!";
 
+        if ($isAuto) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => true,
+                'message' => $resultMessage,
+                'database' => $dbName,
+                'tables_count' => count($tables),
+                'tables' => $tables,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
     } catch (Exception $e) {
         $resultType = 'error';
         $resultMessage = "মাইগ্রেশনে ত্রুটি: " . $e->getMessage();
+        if ($isAuto) {
+            header('Content-Type: application/json; charset=utf-8', true, 500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
 }
 
