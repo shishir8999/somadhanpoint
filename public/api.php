@@ -51,6 +51,7 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
+    $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 } catch (PDOException $e) {
     try {
         $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=somadhanpoint;charset=utf8mb4", "root", "", [
