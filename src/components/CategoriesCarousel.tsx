@@ -74,12 +74,12 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2.5 sm:py-4 relative">
       <div className="relative flex items-center">
-        {/* Left Arrow Button */}
+        {/* Left Arrow Button (Desktop only, touch swipe on mobile) */}
         <button
           onClick={() => scroll('left')}
-          className="absolute -left-2 z-10 w-7 h-7 rounded-full bg-[#990000] text-white flex items-center justify-center shadow-md hover:bg-[#800000] transition-colors cursor-pointer"
+          className="hidden md:flex absolute -left-3 z-10 w-8 h-8 rounded-full bg-[#990000] text-white items-center justify-center shadow-md hover:bg-[#800000] transition-colors cursor-pointer"
           aria-label="Previous"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -88,7 +88,7 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
         {/* Categories Row */}
         <div
           ref={scrollRef}
-          className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth px-6 py-2 w-full justify-start sm:justify-between"
+          className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth px-2 sm:px-6 py-1.5 w-full justify-start sm:justify-between touch-pan-x"
         >
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.name;
@@ -99,7 +99,7 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
                 className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group select-none"
               >
                 <div
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 p-1 transition-all bg-white flex items-center justify-center overflow-hidden shadow-2xs group-hover:scale-105 ${
+                  className={`w-13 h-13 sm:w-16 sm:h-16 rounded-full border-2 p-1 transition-all bg-white flex items-center justify-center overflow-hidden shadow-2xs group-hover:scale-105 ${
                     isSelected
                       ? 'border-[#990000] ring-2 ring-red-200'
                       : 'border-slate-200 group-hover:border-[#990000]'
@@ -116,7 +116,7 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
                   )}
                 </div>
                 <span
-                  className={`text-[10px] sm:text-[11px] font-semibold text-center whitespace-nowrap group-hover:text-[#990000] transition-colors max-w-[80px] sm:max-w-[90px] truncate ${
+                  className={`text-[10px] sm:text-[11px] font-semibold text-center whitespace-nowrap group-hover:text-[#990000] transition-colors max-w-[75px] sm:max-w-[90px] truncate ${
                     isSelected ? 'text-[#990000]' : 'text-slate-700'
                   }`}
                   title={cat.name}
@@ -128,10 +128,10 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
           })}
         </div>
 
-        {/* Right Arrow Button */}
+        {/* Right Arrow Button (Desktop only) */}
         <button
           onClick={() => scroll('right')}
-          className="absolute -right-2 z-10 w-7 h-7 rounded-full bg-[#990000] text-white flex items-center justify-center shadow-md hover:bg-[#800000] transition-colors cursor-pointer"
+          className="hidden md:flex absolute -right-3 z-10 w-8 h-8 rounded-full bg-[#990000] text-white items-center justify-center shadow-md hover:bg-[#800000] transition-colors cursor-pointer"
           aria-label="Next"
         >
           <ChevronRight className="w-4 h-4" />

@@ -125,8 +125,8 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
         </a>
       </div>
 
-      {/* Center: Search input with red Search button */}
-        <div className="flex-1 max-w-2xl mx-2 relative">
+        {/* Center: Search input for desktop (hidden on mobile) */}
+        <div className="hidden md:flex flex-1 max-w-2xl mx-4 relative">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -139,7 +139,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
                 onSelectProduct(searchResults[0]);
               }
             }}
-            className="flex items-center"
+            className="flex items-center w-full"
           >
             <input
               type="text"
@@ -162,7 +162,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
             </button>
           </form>
 
-          {/* Search Dropdown Results */}
+          {/* Search Dropdown Results for Desktop */}
           {isSearching && searchTerm.trim().length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-2xl z-50 max-h-96 overflow-y-auto divide-y divide-slate-100">
               {searchResults.length === 0 ? (
@@ -386,6 +386,132 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
             </span>
           </button>
         </div>
+      </div>
+
+      {/* Mobile Dedicated Full-Width Search Bar */}
+      <div className="md:hidden px-3 pb-2 pt-0.5 border-t border-slate-100 bg-white relative">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const query = searchTerm.trim();
+            if (!query) return;
+            setIsSearching(false);
+            if (onSearchSubmit) {
+              onSearchSubmit(query);
+            } else if (searchResults.length > 0) {
+              onSelectProduct(searchResults[0]);
+            }
+          }}
+          className="flex items-center w-full shadow-2xs"
+        >
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setIsSearching(true);
+            }}
+            onFocus={() => setIsSearching(true)}
+            placeholder="পণ্য বা কি-ওয়ার্ড খুঁজুন (যেমন: জুতা, ঘড়ি, খিমার)..."
+            className="w-full text-xs px-3.5 py-1.5 border border-slate-300 rounded-l focus:outline-none focus:border-[#990000] text-slate-800 placeholder-slate-400 bg-slate-50 focus:bg-white"
+          />
+          <button
+            type="submit"
+            className="bg-[#b30000] hover:bg-[#990000] text-white text-xs font-bold px-3.5 py-1.5 border border-[#b30000] rounded-r transition-colors flex items-center justify-center cursor-pointer shrink-0"
+            title="Search Products"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </form>
+
+        {/* Mobile Search Dropdown */}
+        {isSearching && searchTerm.trim().length > 0 && (
+          <div className="absolute top-full left-2 right-2 mt-1 bg-white border border-slate-200 rounded-lg shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
+            {searchResults.length === 0 ? (
+              <div className="p-4 text-xs text-slate-500 text-center space-y-1.5">
+                <p className="font-semibold text-slate-700">
+                  "{searchTerm}" দিয়ে কোনো পণ্য পাওয়া যায়নি
+                </p>
+                {onSearchSubmit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearching(false);
+                      onSearchSubmit('');
+                    }}
+                    className="px-3 py-1 bg-red-50 text-[#990000] font-bold rounded text-xs"
+                  >
+                    সকল পণ্য দেখুন
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="px-3 py-1 bg-slate-50 text-[10px] font-bold text-slate-500 flex items-center justify-between">
+                  <span>অনুসন্ধানের ফলাফল ({searchResults.length} টি)</span>
+                  <span onClick={() => setIsSearching(false)} className="text-[#990000] cursor-pointer font-bold">✕ বন্ধ</span>
+                </div>
+                {searchResults.slice(0, 6).map((product) => {
+                  const img =
+                    product.imageUrl ||
+                    product.thumbnailUrl ||
+                    (product.colorVariants && product.colorVariants.find((c) => c.image)?.image);
+
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => {
+                        onSelectProduct(product);
+                        setIsSearching(false);
+                        setSearchTerm('');
+                      }}
+                      className="p-2 flex items-center gap-2.5 hover:bg-red-50/60 cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded border border-slate-200 bg-slate-50 shrink-0 overflow-hidden flex items-center justify-center p-0.5">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={product.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <ProductVisual visualType={product.visualType} name={product.name} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {product.category}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-[#990000] block">
+                          ৳{product.currentPrice}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {onSearchSubmit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearching(false);
+                      onSearchSubmit(searchTerm.trim());
+                    }}
+                    className="w-full p-2 bg-slate-50 hover:bg-red-50 text-center text-xs font-bold text-[#990000] flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <span>সকল ফলাফল দেখুন ({searchResults.length} টি)</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

@@ -41,10 +41,10 @@ export const FloatingButtons: React.FC<FloatingButtonsProps> = ({
 
   return (
     <>
-      {/* 1. Floating Cart Tab on Right Edge (as seen in screenshot) */}
+      {/* 1. Floating Cart Tab on Right Edge (hidden on mobile, bottom nav has cart) */}
       <div
         onClick={onOpenCart}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-[#990000] hover:bg-[#800000] text-white p-2 rounded-l-md shadow-xl flex flex-col items-center cursor-pointer transition-transform hover:-translate-x-1"
+        className="hidden md:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-[#990000] hover:bg-[#800000] text-white p-2 rounded-l-md shadow-xl flex-col items-center cursor-pointer transition-transform hover:-translate-x-1"
       >
         <div className="relative mb-1">
           <ShoppingBag className="w-5 h-5" />

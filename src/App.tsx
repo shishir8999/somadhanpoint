@@ -1426,6 +1426,7 @@ export default function App() {
         onOpenCategories={() => setIsMobileMenuOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onToggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        onOpenOrderTracking={handleOpenOrderTracking}
       />
 
       {/* Floating Cart and Chat Button */}

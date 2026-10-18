@@ -25,10 +25,42 @@ export const HeroSlider: React.FC = () => {
     setCurrentSlide((prev) => (prev + 1) % banners.length);
   };
 
+  // Touch swipe support for mobile
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const minSwipeDistance = 40;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      handleNext();
+    } else if (isRightSwipe) {
+      handlePrev();
+    }
+  };
+
   if (banners.length > 0) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2 select-none">
-        <div className="relative rounded-xl overflow-hidden shadow-xs aspect-[21/9] sm:aspect-[24/8] md:aspect-[28/8] min-h-[160px] sm:min-h-[200px] md:min-h-[260px] bg-slate-900 group">
+      <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 sm:pt-3 pb-2 select-none">
+        <div
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          className="relative rounded-lg sm:rounded-xl overflow-hidden shadow-xs aspect-[16/9] sm:aspect-[21/9] md:aspect-[28/8] min-h-[160px] sm:min-h-[220px] md:min-h-[280px] bg-slate-900 group"
+        >
           {banners.map((b, idx) => (
             <div
               key={b.id || idx}
@@ -39,11 +71,11 @@ export const HeroSlider: React.FC = () => {
               <img
                 src={b.imageUrl}
                 alt="Banner"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
               {b.title && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
-                  <h3 className="text-white text-lg sm:text-2xl font-black drop-shadow-md">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex items-end p-3.5 sm:p-6 pb-6 sm:pb-7">
+                  <h3 className="text-white text-xs sm:text-lg md:text-2xl font-black drop-shadow-md line-clamp-2 max-w-[85%] sm:max-w-none leading-snug">
                     {b.title}
                   </h3>
                 </div>
@@ -57,29 +89,29 @@ export const HeroSlider: React.FC = () => {
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
+                className="absolute left-1.5 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-70 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
                 aria-label="Previous Slide"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 type="button"
                 onClick={handleNext}
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
+                className="absolute right-1.5 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-70 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
                 aria-label="Next Slide"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               {/* Indicator Dots */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/30 backdrop-blur-xs px-2.5 py-1 rounded-full">
+              <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">
                 {banners.map((_, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setCurrentSlide(idx)}
-                    className={`h-2 rounded-full transition-all cursor-pointer ${
-                      currentSlide === idx ? 'w-5 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'
+                    className={`h-1.5 sm:h-2 rounded-full transition-all cursor-pointer ${
+                      currentSlide === idx ? 'w-4 sm:w-5 bg-white' : 'w-1.5 sm:w-2 bg-white/50 hover:bg-white/80'
                     }`}
                     aria-label={`Slide ${idx + 1}`}
                   />
