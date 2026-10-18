@@ -22,10 +22,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] px-1 h-[50px] flex items-center justify-around select-none"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] px-1 h-[50px] flex items-center justify-around select-none"
       style={{
-        transform: 'translateZ(0)',
-        WebkitTransform: 'translateZ(0)',
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        maxWidth: '100vw',
+        transform: 'translate3d(0, 0, 0)',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
       }}
       aria-label="Mobile Bottom Navigation"
     >
