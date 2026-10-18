@@ -68,16 +68,15 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
   const [isInteracting, setIsInteracting] = useState(false);
 
   useEffect(() => {
-    if (categories.length <= 2) return;
+    if (categories.length <= 4) return;
 
     const interval = setInterval(() => {
       if (isInteracting) return;
       const el = scrollRef.current;
       if (!el) return;
 
-      // Dynamically measure single item width + gap
-      const itemEl = el.firstElementChild as HTMLElement;
-      const step = itemEl ? itemEl.offsetWidth + 12 : 82;
+      const itemsPerView = window.innerWidth >= 768 ? 8 : window.innerWidth >= 640 ? 6 : 4;
+      const step = el.clientWidth / itemsPerView;
 
       // If at end, loop back smoothly to start
       if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 10) {
@@ -85,7 +84,7 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
       } else {
         el.scrollBy({ left: step, behavior: 'smooth' });
       }
-    }, 2400);
+    }, 2800);
 
     return () => clearInterval(interval);
   }, [categories.length, isInteracting]);
@@ -93,8 +92,8 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const el = scrollRef.current;
-      const itemEl = el.firstElementChild as HTMLElement;
-      const step = itemEl ? (itemEl.offsetWidth + 12) * 2 : 164;
+      const itemsPerView = window.innerWidth >= 768 ? 8 : window.innerWidth >= 640 ? 6 : 4;
+      const step = (el.clientWidth / itemsPerView) * 2;
       el.scrollBy({
         left: direction === 'left' ? -step : step,
         behavior: 'smooth',
@@ -121,7 +120,11 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
           onMouseLeave={() => setIsInteracting(false)}
           onTouchStart={() => setIsInteracting(true)}
           onTouchEnd={() => setTimeout(() => setIsInteracting(false), 2500)}
-          className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth px-2 sm:px-6 py-1.5 w-full justify-start touch-pan-x"
+          className="flex items-center overflow-x-auto no-scrollbar scroll-smooth w-full touch-pan-x"
+          style={{
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+          }}
         >
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat.name;
@@ -129,10 +132,11 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
               <div
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.name)}
-                className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group select-none"
+                className="w-1/4 sm:w-1/6 md:w-[12.5%] shrink-0 flex flex-col items-center justify-center p-1.5 cursor-pointer select-none group"
+                style={{ scrollSnapAlign: 'start' }}
               >
                 <div
-                  className={`w-13 h-13 sm:w-16 sm:h-16 rounded-full border-2 p-1 transition-all bg-white flex items-center justify-center overflow-hidden shadow-2xs group-hover:scale-105 ${
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 p-1 transition-all bg-white flex items-center justify-center overflow-hidden shadow-xs group-hover:scale-105 ${
                     isSelected
                       ? 'border-[#990000] ring-2 ring-red-200'
                       : 'border-slate-200 group-hover:border-[#990000]'
@@ -149,8 +153,8 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
                   )}
                 </div>
                 <span
-                  className={`text-[10px] sm:text-[11px] font-semibold text-center whitespace-nowrap group-hover:text-[#990000] transition-colors max-w-[75px] sm:max-w-[90px] truncate ${
-                    isSelected ? 'text-[#990000]' : 'text-slate-700'
+                  className={`text-[11px] sm:text-[12px] font-medium text-center whitespace-nowrap group-hover:text-[#990000] transition-colors max-w-full px-1 truncate mt-1 ${
+                    isSelected ? 'text-[#990000] font-semibold' : 'text-slate-700'
                   }`}
                   title={cat.name}
                 >
