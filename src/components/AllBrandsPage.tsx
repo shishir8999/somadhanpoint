@@ -10,7 +10,8 @@ import {
   Tag,
   Upload,
   Image as ImageIcon,
-  AlertTriangle
+  AlertTriangle,
+  Camera
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
@@ -38,6 +39,38 @@ interface AllBrandsPageProps {
 const DEFAULT_BRANDS: BrandRow[] = [
   {
     id: 'brand-1',
+    name: 'Apex Premium',
+    logoText: 'APEX',
+    logoColor: 'text-red-700 font-black tracking-wider',
+    productsCount: 12,
+    createdDate: 'July 11, 2026',
+  },
+  {
+    id: 'brand-2',
+    name: 'Nature Care BD',
+    logoText: 'NATURE CARE',
+    logoColor: 'text-emerald-700 font-bold tracking-wider',
+    productsCount: 8,
+    createdDate: 'July 7, 2026',
+  },
+  {
+    id: 'brand-3',
+    name: 'Somadhan Pure',
+    logoText: 'SOMADHAN',
+    logoColor: 'text-blue-700 font-black tracking-wider',
+    productsCount: 15,
+    createdDate: 'July 7, 2026',
+  },
+  {
+    id: 'brand-4',
+    name: 'Walton',
+    logoText: 'WALTON',
+    logoColor: 'text-blue-700 font-black tracking-wider',
+    productsCount: 7,
+    createdDate: 'July 7, 2026',
+  },
+  {
+    id: 'brand-5',
     name: 'Comforty',
     logoText: 'COMFORTY',
     logoColor: 'text-slate-800 font-black tracking-widest',
@@ -45,18 +78,10 @@ const DEFAULT_BRANDS: BrandRow[] = [
     createdDate: 'July 11, 2026',
   },
   {
-    id: 'brand-2',
+    id: 'brand-6',
     name: 'Vision',
     logoText: 'VISION',
     logoColor: 'text-slate-800 font-bold tracking-wider',
-    productsCount: 7,
-    createdDate: 'July 7, 2026',
-  },
-  {
-    id: 'brand-3',
-    name: 'Walton',
-    logoText: 'WALTON',
-    logoColor: 'text-blue-700 font-black tracking-wider',
     productsCount: 7,
     createdDate: 'July 7, 2026',
   },
@@ -74,6 +99,10 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
   const [editingBrand, setEditingBrand] = useState<BrandRow | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<BrandRow | null>(null);
   const isInitialMount = useRef(true);
+
+  // Direct table upload target
+  const [directUploadBrandId, setDirectUploadBrandId] = useState<string | null>(null);
+  const directTableFileInputRef = useRef<HTMLInputElement>(null);
 
   // New brand form
   const [newName, setNewName] = useState('');
@@ -101,7 +130,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
   // Initial load from server database
   useEffect(() => {
     fetchBrandsFromDatabase().then((dbBrands) => {
-      if (dbBrands && Array.isArray(dbBrands)) {
+      if (dbBrands && Array.isArray(dbBrands) && dbBrands.length > 0) {
         setBrandsList(dbBrands);
         try {
           localStorage.setItem('ummah_admin_brands_list', JSON.stringify(dbBrands));
@@ -144,6 +173,38 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
       reader.onload = () => {
         if (reader.result) {
           onSuccess(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDirectTableUpload = (brandId: string) => {
+    setDirectUploadBrandId(brandId);
+    if (directTableFileInputRef.current) {
+      directTableFileInputRef.current.value = '';
+      directTableFileInputRef.current.click();
+    }
+  };
+
+  const onDirectFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && directUploadBrandId) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result) {
+          const base64Url = reader.result as string;
+          const updated = brandsList.map((b) =>
+            b.id === directUploadBrandId ? { ...b, imageUrl: base64Url } : b
+          );
+          setBrandsList(updated);
+          try {
+            localStorage.setItem('ummah_admin_brands_list', JSON.stringify(updated));
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('brands-updated'));
+          } catch {}
+          saveBrandsToDatabase(updated);
+          showToast('ব্র্যান্ড ইমেজ সফলভাবে আপলোড ও সেভ হয়েছে!');
         }
       };
       reader.readAsDataURL(file);
@@ -233,6 +294,15 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
 
   return (
     <div className="min-h-screen flex bg-[#f8fafc] text-slate-800 font-sans">
+      {/* Hidden file input for instant one-click table upload */}
+      <input
+        type="file"
+        ref={directTableFileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={onDirectFileChosen}
+      />
+
       {/* 1. Left Unified Sidebar */}
       <AdminSidebar
         activePage="all_brands"
@@ -251,10 +321,15 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
         )}
 
         {/* Top Header & Search Row */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            All Brands
-          </h1>
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              All Brands (সকল ব্র্যান্ড)
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              ব্র্যান্ডের লোগো/ছবি আপলোড করুন এবং নাম সরাসরি এডিট করুন
+            </p>
+          </div>
 
           <div className="flex items-center gap-2.5">
             {/* Search Input */}
@@ -265,7 +340,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search brands..."
-                className="text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#990000] w-48 sm:w-64"
+                className="text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#990000] w-40 sm:w-64"
               />
             </div>
 
@@ -281,94 +356,121 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
         </header>
 
         {/* 3. Table */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs whitespace-nowrap">
+              <table className="w-full text-left text-xs">
                 {/* Dark Navy Header */}
                 <thead className="bg-[#1e293b] text-white font-bold tracking-wide">
                   <tr>
-                    <th className="py-3 px-4 min-w-[140px]">Image</th>
-                    <th className="py-3 px-4 min-w-[240px]">Name</th>
-                    <th className="py-3 px-4 min-w-[140px]">Products</th>
-                    <th className="py-3 px-4 min-w-[160px]">Created</th>
-                    <th className="py-3 px-4 text-center min-w-[160px]">Options</th>
+                    <th className="py-3 px-4 w-28 sm:w-36">Image (ছবি)</th>
+                    <th className="py-3 px-4 min-w-[160px]">Name (ব্র্যান্ডের নাম)</th>
+                    <th className="py-3 px-4 w-24 text-center">Products</th>
+                    <th className="py-3 px-4 w-32 hidden md:table-cell">Created</th>
+                    <th className="py-3 px-4 text-center w-36">Options</th>
                   </tr>
                 </thead>
 
                 {/* Table Body */}
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredBrands.map((brand) => (
-                    <tr key={brand.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Drag handle + Brand Image/Logo */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <GripVertical className="w-4 h-4 text-slate-400 cursor-grab" />
-                          <div className="w-14 h-8 rounded border border-slate-200 bg-white flex items-center justify-center px-1 shadow-2xs overflow-hidden">
-                            {brand.imageUrl ? (
-                              <img
-                                src={brand.imageUrl}
-                                alt={brand.name}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : brand.name === 'Comforty' ? (
-                              <span className="text-[10px] font-black tracking-widest text-slate-800">
-                                COMFORTY
-                              </span>
-                            ) : brand.name === 'Vision' ? (
-                              <span className="text-[10px] font-black tracking-wider text-slate-900 flex items-center">
-                                VISI<span className="text-red-600">O</span>N
-                              </span>
-                            ) : brand.name === 'Walton' ? (
-                              <span className="text-[10px] font-black tracking-wider text-blue-700 flex items-center gap-0.5">
-                                <span className="text-red-600 font-extrabold text-xs">W</span> WALTON
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-slate-700">
-                                {brand.logoText}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Name */}
-                      <td className="py-3 px-4 font-bold text-slate-900">
-                        {brand.name}
-                      </td>
-
-                      {/* Products count */}
-                      <td className="py-3 px-4 font-semibold text-slate-600">
-                        {brand.productsCount}
-                      </td>
-
-                      {/* Created date */}
-                      <td className="py-3 px-4 text-slate-500 font-medium">
-                        {brand.createdDate}
-                      </td>
-
-                      {/* Options: Edit, Delete */}
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setEditingBrand(brand)}
-                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Edit className="w-3 h-3" />
-                            <span>Edit</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteBrand(brand)}
-                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
+                  {filteredBrands.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                        কোনো ব্র্যান্ড পাওয়া যায়নি। "+ Add Brand" ক্লিক করে নতুন ব্র্যান্ড যুক্ত করুন।
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredBrands.map((brand) => (
+                      <tr key={brand.id} className="hover:bg-slate-50/80 transition-colors">
+                        {/* Drag handle + Brand Image/Logo with DIRECT Upload Trigger */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <GripVertical className="w-4 h-4 text-slate-400 cursor-grab shrink-0" />
+                            
+                            {brand.imageUrl ? (
+                              <div
+                                onClick={() => handleDirectTableUpload(brand.id)}
+                                className="relative w-16 h-10 rounded border border-slate-200 bg-white flex items-center justify-center p-1 shadow-2xs overflow-hidden group cursor-pointer hover:border-[#990000]"
+                                title="ছবি পরিবর্তন করতে ক্লিক করুন"
+                              >
+                                <img
+                                  src={brand.imageUrl}
+                                  alt={brand.name}
+                                  className="w-full h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <Camera className="w-3.5 h-3.5" />
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDirectTableUpload(brand.id)}
+                                className="w-16 h-10 rounded border-2 border-dashed border-red-300 hover:border-[#990000] bg-red-50/70 hover:bg-red-100/90 text-[#990000] flex flex-col items-center justify-center p-0.5 transition-all cursor-pointer group shadow-2xs"
+                                title="ব্র্যান্ডের ইমেজ আপলোড করতে ক্লিক করুন"
+                              >
+                                <Upload className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                                <span className="text-[8px] font-bold mt-0.5 leading-tight">ইমেজ দিন</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Name (with quick edit click) */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              onClick={() => setEditingBrand(brand)}
+                              className="font-bold text-slate-900 text-sm hover:text-[#990000] cursor-pointer"
+                              title="নাম এডিট করতে ক্লিক করুন"
+                            >
+                              {brand.name}
+                            </span>
+                            <button
+                              onClick={() => setEditingBrand(brand)}
+                              className="text-slate-400 hover:text-amber-600 transition-colors p-0.5 cursor-pointer"
+                              title="নাম এডিট করুন"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Products count */}
+                        <td className="py-3 px-4 text-center font-bold text-slate-600">
+                          {brand.productsCount}
+                        </td>
+
+                        {/* Created date */}
+                        <td className="py-3 px-4 text-slate-500 font-medium hidden md:table-cell">
+                          {brand.createdDate}
+                        </td>
+
+                        {/* Options: Edit, Delete */}
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setEditingBrand(brand)}
+                              className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              title="ব্র্যান্ডের নাম ও ছবি এডিট করুন"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteBrand(brand)}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                              title="ব্র্যান্ড মুছে ফেলুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -387,7 +489,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                 <Tag className="w-4 h-4" />
                 <span>নতুন ব্র্যান্ড যুক্ত করুন</span>
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -400,14 +502,14 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="যেমন: Samsung, Bata, Apex"
+                  placeholder="যেমন: Apex Premium, Nature Care BD"
                   className="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-[#990000]"
                 />
               </div>
 
               {/* Brand Image Upload */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">ব্র্যান্ড লোগো / ছবি (Image)</label>
+                <label className="block font-bold text-slate-700 mb-1">ব্র্যান্ড লোগো / ছবি (Image Upload)</label>
                 <div className="space-y-2">
                   {newImageUrl ? (
                     <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded">
@@ -423,7 +525,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                         <button
                           type="button"
                           onClick={() => setNewImageUrl('')}
-                          className="text-[10px] text-red-600 hover:underline font-bold mt-0.5"
+                          className="text-[10px] text-red-600 hover:underline font-bold mt-0.5 cursor-pointer"
                         >
                           ছবি রিমুভ করুন
                         </button>
@@ -441,10 +543,10 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                       <button
                         type="button"
                         onClick={() => addFileInputRef.current?.click()}
-                        className="flex-1 py-2 px-3 border-2 border-dashed border-slate-300 hover:border-[#990000] rounded text-slate-600 hover:text-[#990000] flex items-center justify-center gap-1.5 font-bold transition-colors cursor-pointer"
+                        className="flex-1 py-2.5 px-3 border-2 border-dashed border-red-300 hover:border-[#990000] bg-red-50/50 hover:bg-red-50 rounded text-[#990000] flex items-center justify-center gap-1.5 font-bold transition-colors cursor-pointer"
                       >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>ছবি আপলোড করুন (ডিভাইস থেকে)</span>
+                        <Upload className="w-4 h-4" />
+                        <span>ডিভাইস থেকে ছবি আপলোড করুন</span>
                       </button>
                     </div>
                   )}
@@ -476,7 +578,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border rounded text-slate-600 hover:bg-slate-100 font-bold"
+                  className="px-4 py-2 border rounded text-slate-600 hover:bg-slate-100 font-bold cursor-pointer"
                 >
                   বাতিল
                 </button>
@@ -501,9 +603,9 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
             <div className="bg-[#1e293b] text-white p-3.5 flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Edit className="w-4 h-4 text-amber-400" />
-                <span>ব্র্যান্ড সম্পাদনা</span>
+                <span>ব্র্যান্ডের নাম ও ছবি এডিট করুন</span>
               </h3>
-              <button onClick={() => setEditingBrand(null)} className="text-white/80 hover:text-white">
+              <button onClick={() => setEditingBrand(null)} className="text-white/80 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -518,26 +620,27 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                   onChange={(e) =>
                     setEditingBrand({ ...editingBrand, name: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-[#990000]"
+                  placeholder="ব্র্যান্ডের নাম লিখুন"
+                  className="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-[#990000] text-sm font-semibold"
                 />
               </div>
 
               {/* Edit Brand Image */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">ব্র্যান্ড লোগো / ছবি (Image)</label>
+                <label className="block font-bold text-slate-700 mb-1">ব্র্যান্ড লোগো / ছবি (Image Upload)</label>
                 <div className="space-y-2">
                   {editingBrand.imageUrl ? (
-                    <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded">
+                    <div className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                       <img
                         src={editingBrand.imageUrl}
                         alt="Brand preview"
-                        className="w-16 h-10 object-contain bg-white rounded border border-slate-200 p-0.5"
+                        className="w-20 h-12 object-contain bg-white rounded border border-slate-200 p-1"
                       />
                       <div className="flex-1 min-w-0">
                         <span className="text-[11px] text-emerald-700 font-bold block truncate">
                           বর্তমান ছবি যুক্ত আছে
                         </span>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-1">
                           <input
                             type="file"
                             ref={editFileInputRef}
@@ -552,7 +655,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                           <button
                             type="button"
                             onClick={() => editFileInputRef.current?.click()}
-                            className="text-[10px] text-[#990000] hover:underline font-bold"
+                            className="text-xs text-[#990000] hover:underline font-bold cursor-pointer"
                           >
                             ছবি পরিবর্তন করুন
                           </button>
@@ -562,7 +665,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                             onClick={() =>
                               setEditingBrand({ ...editingBrand, imageUrl: undefined })
                             }
-                            className="text-[10px] text-red-600 hover:underline font-bold"
+                            className="text-xs text-red-600 hover:underline font-bold cursor-pointer"
                           >
                             মুছে ফেলুন
                           </button>
@@ -585,10 +688,10 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                       <button
                         type="button"
                         onClick={() => editFileInputRef.current?.click()}
-                        className="w-full py-2 px-3 border-2 border-dashed border-slate-300 hover:border-[#990000] rounded text-slate-600 hover:text-[#990000] flex items-center justify-center gap-1.5 font-bold transition-colors cursor-pointer"
+                        className="w-full py-2.5 px-3 border-2 border-dashed border-red-300 hover:border-[#990000] bg-red-50/50 hover:bg-red-50 rounded-lg text-[#990000] flex items-center justify-center gap-1.5 font-bold transition-colors cursor-pointer"
                       >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>ছবি আপলোড করুন (ডিভাইস থেকে)</span>
+                        <Upload className="w-4 h-4" />
+                        <span>ডিভাইস থেকে নতুন ছবি আপলোড করুন</span>
                       </button>
                     </div>
                   )}
@@ -627,7 +730,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingBrand(null)}
-                  className="px-4 py-2 border rounded text-slate-600 hover:bg-slate-100 font-bold"
+                  className="px-4 py-2 border rounded text-slate-600 hover:bg-slate-100 font-bold cursor-pointer"
                 >
                   বাতিল
                 </button>
@@ -635,7 +738,7 @@ export const AllBrandsPage: React.FC<AllBrandsPageProps> = ({
                   type="submit"
                   className="px-4 py-2 bg-[#990000] hover:bg-[#800000] text-white rounded font-bold shadow-xs cursor-pointer"
                 >
-                  আপডেট করুন
+                  সংরক্ষণ করুন
                 </button>
               </div>
             </form>

@@ -15,11 +15,17 @@ import {
   Star,
   CheckCircle2,
   AlertCircle,
-  Check
+  Check,
+  Clock
 } from 'lucide-react';
 import { Product, ColorVariant } from '../types';
 import { ProductVisual } from './ProductVisual';
 import { AuthModal } from './AuthModal';
+import {
+  submitCustomerReview,
+  getPublicApprovedReviews,
+  ReviewItem
+} from '../utils/reviewSync';
 
 interface ProductDetailPageProps {
   product: Product;
@@ -176,14 +182,47 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     setSelectedImageIndex(0);
   }, [product, resolvedColors, resolvedSizes]);
 
-  // Reviews State
-  const [reviewsList, setReviewsList] = useState<ProductReview[]>([]);
+  // Reviews State - ONLY Super Admin approved reviews are displayed in public!
+  const [reviewsList, setReviewsList] = useState<ProductReview[]>(() => {
+    const approved = getPublicApprovedReviews(product.id);
+    return approved.map((r) => ({
+      id: r.id,
+      userName: r.reviewerName,
+      rating: r.rating,
+      comment: r.reviewComment,
+      date: r.date,
+    }));
+  });
+  const [hasPendingNotice, setHasPendingNotice] = useState(false);
   const [experienceRating, setExperienceRating] = useState<number>(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewerName, setReviewerName] = useState('');
   const [formError, setFormError] = useState('');
   const [successToast, setSuccessToast] = useState('');
   const [isLocalAuthOpen, setIsLocalAuthOpen] = useState(false);
+
+  // Real-time synchronization: when Super Admin approves, it immediately displays live
+  useEffect(() => {
+    const syncApprovedReviews = () => {
+      const approved = getPublicApprovedReviews(product.id);
+      setReviewsList(
+        approved.map((r) => ({
+          id: r.id,
+          userName: r.reviewerName,
+          rating: r.rating,
+          comment: r.reviewComment,
+          date: r.date,
+        }))
+      );
+    };
+    syncApprovedReviews();
+    window.addEventListener('storage', syncApprovedReviews);
+    window.addEventListener('reviews-updated', syncApprovedReviews);
+    return () => {
+      window.removeEventListener('storage', syncApprovedReviews);
+      window.removeEventListener('reviews-updated', syncApprovedReviews);
+    };
+  }, [product.id]);
 
   const handleOpenAuth = () => {
     if (onOpenAuth) {
@@ -244,23 +283,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       return;
     }
 
-    const newRev: ProductReview = {
-      id: Date.now().toString(),
-      userName: reviewerName.trim() || 'সম্মানিত ক্রেতা',
+    // Customer review submitted with Pending status: NEVER shown publicly until Super Admin approves!
+    submitCustomerReview({
+      productId: product.id,
+      productName: product.title || product.name,
+      reviewerName: reviewerName.trim() || 'সম্মানিত ক্রেতা',
       rating: experienceRating,
-      comment: reviewText.trim(),
-      date: 'আজ',
-    };
+      reviewComment: reviewText.trim(),
+    });
 
-    setReviewsList([newRev, ...reviewsList]);
     setExperienceRating(0);
     setReviewText('');
     setReviewerName('');
     setFormError('');
-    setSuccessToast('ধন্যবাদ! আপনার রিভিউ সফলভাবে জমা হয়েছে।');
+    setHasPendingNotice(true);
+    setSuccessToast(
+      'ধন্যবাদ! আপনার রিভিউ সফলভাবে জমা হয়েছে। আমাদের সুপার অ্যাডমিন পর্যালোচনার পর এটি অনুমোদিত হলে ওয়েবসাইটে প্রদর্শিত হবে।'
+    );
     setTimeout(() => {
       setSuccessToast('');
-    }, 4000);
+    }, 6000);
   };
 
   // Get active color variant details if present
@@ -731,6 +773,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-md text-xs sm:text-sm flex items-center gap-2 animate-in fade-in">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>{successToast}</span>
+                    </div>
+                  )}
+
+                  {/* Pending Approval Notice Banner */}
+                  {hasPendingNotice && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-md text-xs flex items-start gap-2 animate-in fade-in">
+                      <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">আপনার রিভিউটি পর্যালোচনার জন্য জমা হয়েছে!</p>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          সুপার অ্যাডমিন অনুমোদনের পর এটি সবার জন্য উন্মুক্ত করা হবে।
+                        </p>
+                      </div>
                     </div>
                   )}
 
