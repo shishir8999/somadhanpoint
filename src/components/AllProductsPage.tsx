@@ -13,7 +13,8 @@ import {
   Square,
   MinusSquare,
   AlertTriangle,
-  Layers
+  Layers,
+  Menu
 } from 'lucide-react';
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
@@ -590,10 +591,20 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
         )}
 
         {/* Top Header & Filter Row */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            All Products
-          </h1>
+        <header className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin-mobile-sidebar'))}
+              className="md:hidden p-2 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              title="মেনু খুলুন"
+            >
+              <Menu className="w-4 h-4 text-slate-800" />
+            </button>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              All Products
+            </h1>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Category Dropdown */}

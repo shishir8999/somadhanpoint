@@ -55,8 +55,10 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   tiktok: 'https://www.tiktok.com',
   fbPixelId: '',
   fbApiToken: '',
+  logoUrl: '/somadhan-logo.svg',
+  footerLogoUrl: '/somadhan-logo.svg',
   footerLogoBg: 'white_card',
-  adminLogoBg: 'white_card',
+  adminLogoBg: 'transparent',
   showLogoText: false,
   banners: [
     {
@@ -160,6 +162,13 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             if (pixelParsed.fbApiToken && !parsed.fbApiToken) parsed.fbApiToken = pixelParsed.fbApiToken;
           } catch {}
         }
+        if (!parsed.logoUrl || parsed.logoUrl === '' || parsed.logoUrl.includes('placeholder')) {
+          parsed.logoUrl = '/somadhan-logo.svg';
+        }
+        if (!parsed.footerLogoUrl || parsed.footerLogoUrl === '' || parsed.footerLogoUrl.includes('placeholder')) {
+          parsed.footerLogoUrl = '/somadhan-logo.svg';
+        }
+
         const updated = { ...DEFAULT_STORE_SETTINGS, ...parsed };
         localStorage.setItem('ecom_store_settings', JSON.stringify(updated));
         return updated;

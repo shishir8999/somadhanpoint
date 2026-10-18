@@ -23,6 +23,7 @@ import {
   FileText,
   Calculator,
   Mail,
+  Menu,
   Layout,
   Settings,
   LayoutDashboard,
@@ -523,8 +524,16 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
           {/* Quick Create + Icon */}
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin-mobile-sidebar'))}
+              className="md:hidden p-2 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              title="মেনু খুলুন"
+            >
+              <Menu className="w-4 h-4 text-slate-800" />
+            </button>
+            <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+              className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs shrink-0"
               title="নতুন অর্ডার তৈরি করুন (Create Order)"
             >
               <Plus className="w-4 h-4" />
