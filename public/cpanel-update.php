@@ -38,17 +38,39 @@ if (isset($_POST['run_deploy'])) {
 
         file_put_contents($destinationZip, $zipData);
 
-        // 2. Extract Zip Archive
+        // 2. Extract Zip Archive (Normalized cross-platform extraction)
         $zip = new ZipArchive();
         if ($zip->open($destinationZip) === TRUE) {
-            $zip->extractTo($targetDir);
-            
-            // Also copy to public/ if public exists and is different
-            if (is_dir($targetDir . '/public')) {
-                $zip->extractTo($targetDir . '/public');
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entryName = $zip->getNameIndex($i);
+                $normalized = str_replace('\\', '/', $entryName);
+
+                $targets = [$targetDir . '/' . $normalized];
+                if (is_dir($targetDir . '/public')) {
+                    $targets[] = $targetDir . '/public/' . $normalized;
+                }
+
+                foreach ($targets as $dest) {
+                    if (substr($normalized, -1) === '/') {
+                        if (!is_dir($dest)) @mkdir($dest, 0755, true);
+                    } else {
+                        $parent = dirname($dest);
+                        if (!is_dir($parent)) @mkdir($parent, 0755, true);
+                        $stream = $zip->getStream($entryName);
+                        if ($stream) {
+                            file_put_contents($dest, stream_get_contents($stream));
+                            fclose($stream);
+                        }
+                    }
+                }
             }
             $zip->close();
             @unlink($destinationZip);
+
+            // Cleanup any stray backslash files from previous extractions
+            foreach (glob($targetDir . '/assets\\*') ?: [] as $stray) {
+                @unlink($stray);
+            }
 
             $statusType = 'success';
             $statusMessage = "অভিনন্দন! আপনার লাইভ ওয়েবসাইটটি সফলভাবে সর্বশেষ মোবাইল-অপ্টিমাইজড ভার্সনে আপডেট হয়েছে। ব্রাউজারে রিফ্রেশ দিয়ে চেক করুন।";
