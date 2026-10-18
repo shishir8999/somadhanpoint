@@ -403,7 +403,7 @@ try {
                     'name' => $r['name'],
                     'visualType' => $r['visual_type'],
                     'price' => floatval($r['price']),
-                    'originalPrice' => $r['original_price'] !== null ? floatval($r['original_price']) : undefined,
+                    'originalPrice' => $r['original_price'] !== null ? floatval($r['original_price']) : null,
                     'discountPercent' => $r['discount_percent'],
                     'category' => $r['category'],
                     'subcategory' => $r['subcategory'],
