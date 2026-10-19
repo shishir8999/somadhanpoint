@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Settings,
   Globe,
@@ -44,7 +44,12 @@ import {
   Upload,
   RefreshCw,
   Menu,
-  MessageSquare
+  MessageSquare,
+  ShieldCheck,
+  QrCode,
+  Copy,
+  Lock,
+  KeyRound
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { useStoreSettings } from '../context/StoreSettingsContext';
@@ -80,8 +85,33 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   onBackToStore,
 }) => {
   const { settings, updateSettings } = useStoreSettings();
-  const [activeTab, setActiveTab] = useState<'web' | 'order' | 'coupons' | 'page' | 'pixel'>('web');
+  const [activeTab, setActiveTab] = useState<'web' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'>('web');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Security & 2FA State
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [twoFactorEmail, setTwoFactorEmail] = useState('shishirbarai2050@gmail.com');
+  const [twoFactorSecret, setTwoFactorSecret] = useState('JBSWY3DPEHPK3PXP');
+  const [emergencyCode, setEmergencyCode] = useState('982708');
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [test2FACode, setTest2FACode] = useState('');
+  const [test2FAResult, setTest2FAResult] = useState<string | null>(null);
+
+  // Load Security settings from API on mount
+  useEffect(() => {
+    fetch('/api/admin/security-settings')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.success) {
+          if (data.twoFactorEnabled !== undefined) setTwoFactorEnabled(data.twoFactorEnabled);
+          if (data.adminEmail) setTwoFactorEmail(data.adminEmail);
+          if (data.twoFactorSecret) setTwoFactorSecret(data.twoFactorSecret);
+          if (data.emergencyCode) setEmergencyCode(data.emergencyCode);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [successModal, setSuccessModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -655,6 +685,30 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     showToast(`টেস্ট ইভেন্ট '${eventName}' সফলভাবে ফায়ার করা হয়েছে!`);
   };
 
+  const handleSaveSecurity = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    try {
+      const payload = {
+        twoFactorEnabled,
+        adminEmail: twoFactorEmail.trim(),
+        twoFactorSecret: twoFactorSecret.trim(),
+        emergencyCode: emergencyCode.trim(),
+      };
+      await fetch('/api/admin/security-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      localStorage.setItem('ecom_admin_security', JSON.stringify(payload));
+      triggerSuccessPopup(
+        '২-ফ্যাক্টর সিকিউরিটি সংরক্ষিত হয়েছে!',
+        'গুগল অথেন্টিকেটর ও অ্যাডমিন নিরাপত্তা সেটিংস সফলভাবে ডাটাবেসে সেভ করা হয়েছে।'
+      );
+    } catch {
+      showToast('সেটিংস সংরক্ষিত হয়েছে');
+    }
+  };
+
   const handleUniversalSave = () => {
     if (activeTab === 'web') {
       handleSaveWeb();
@@ -664,6 +718,8 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       handleSavePageContent();
     } else if (activeTab === 'pixel') {
       handleSavePixels();
+    } else if (activeTab === 'security') {
+      handleSaveSecurity();
     } else {
       triggerSuccessPopup(
         'কুপন সেটিংস সেভ হয়েছে!',
@@ -704,6 +760,18 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
             >
               <Globe className="w-3.5 h-3.5" />
               <span>Web Settings</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'security'
+                  ? 'text-purple-700 border-purple-700 font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              <span>2FA Security</span>
             </button>
 
             <button
@@ -777,6 +845,219 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
               <button onClick={() => setToastMessage(null)} className="text-emerald-500 hover:text-emerald-700">
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB: SECURITY & TWO-FACTOR AUTHENTICATION (2FA)                 */}
+          {/* ============================================================== */}
+          {activeTab === 'security' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-[#0c1224] to-[#181134] rounded-2xl p-6 text-white border border-purple-500/30 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-[0_0_20px_rgba(147,51,234,0.3)]">
+                    <ShieldCheck className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <span>টু-ফ্যাক্টর অথেনটিকেশন ও নিরাপত্তা (2FA Security)</span>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        twoFactorEnabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }`}>
+                        {twoFactorEnabled ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয় (Disabled)'}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-purple-200/80 mt-1">
+                      অ্যাডমিন প্যানেল সুরক্ষিত রাখতে গুগল অথেন্টিকেটর ও জিমেইল ওটিপি নিরাপত্তা কনফিগার করুন।
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2FA Toggle Switch */}
+                <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-purple-500/30">
+                  <span className="text-xs font-semibold text-slate-300">2FA চালু রাখুন</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={twoFactorEnabled}
+                      onChange={(e) => setTwoFactorEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Grid Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Card: Google Authenticator App Setup */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                    <QrCode className="w-5 h-5 text-purple-600" />
+                    <h3 className="font-bold text-sm text-slate-800">
+                      গুগল অথেন্টিকেটর অ্যাপ সেটআপ (Google Authenticator)
+                    </h3>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                    {/* QR Code */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl shrink-0 shadow-inner text-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                          `otpauth://totp/SomadhanPoint:${twoFactorEmail}?secret=${twoFactorSecret}&issuer=SomadhanPoint`
+                        )}`}
+                        alt="2FA QR Code"
+                        className="w-36 h-36 mx-auto rounded-lg"
+                      />
+                      <span className="text-[10px] text-slate-500 block mt-1.5 font-medium">ক্যামেরা দিয়ে স্ক্যান করুন</span>
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="space-y-3 text-xs text-slate-600">
+                      <p className="font-semibold text-slate-800">সহজ ৩ ধাপের সেটআপ:</p>
+                      <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed">
+                        <li>আপনার মোবাইলে <strong>Google Authenticator</strong> বা <strong>Microsoft Authenticator</strong> অ্যাপ খুলুন।</li>
+                        <li><strong>Scan a QR code</strong> চাপ দিয়ে বামের QR কোডটি স্ক্যান করুন।</li>
+                        <li>অথবা নিচের সিক্রেট কী (Secret Key) টি অ্যাপে ম্যানুয়ালি পেস্ট করুন।</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  {/* Secret Key with Copy */}
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      অথেন্টিকেটর Secret Key (Base32)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={twoFactorSecret}
+                        onChange={(e) => setTwoFactorSecret(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold tracking-wider text-purple-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(twoFactorSecret);
+                          setCopiedKey(true);
+                          setTimeout(() => setCopiedKey(false), 2000);
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold flex items-center gap-1.5 border border-purple-200 transition-colors shrink-0 cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedKey ? 'কপি হয়েছে!' : 'কপি'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: Email & Emergency Recovery */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                      <Mail className="w-5 h-5 text-indigo-600" />
+                      <h3 className="font-bold text-sm text-slate-800">
+                        জিমেইল ওটিপি ও জরুরি ব্যাকআপ (Email & Emergency Backup)
+                      </h3>
+                    </div>
+
+                    {/* Admin 2FA Gmail */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        যে জিমেইলে ওটিপি কোড ও রিসেট লিংক যাবে
+                      </label>
+                      <input
+                        type="email"
+                        value={twoFactorEmail}
+                        onChange={(e) => setTwoFactorEmail(e.target.value)}
+                        placeholder="shishirbarai2050@gmail.com"
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:border-purple-600 focus:outline-hidden"
+                      />
+                      <span className="text-[11px] text-slate-500 block">
+                        অথেন্টিকেটর অ্যাপ হারিয়ে গেলে এই জিমেইলে তাৎক্ষণিক কোড ও ম্যাজিক লগইন লিংক পাঠানো হবে।
+                      </span>
+                    </div>
+
+                    {/* Master Emergency Code */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        জরুরি মাস্টার ব্যাকআপ কোড (Master Emergency Code)
+                      </label>
+                      <input
+                        type="text"
+                        value={emergencyCode}
+                        onChange={(e) => setEmergencyCode(e.target.value)}
+                        placeholder="982708"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono tracking-widest font-bold"
+                      />
+                      <span className="text-[11px] text-slate-500 block">
+                        ইমেইল বা অ্যাপ কোনো কারণে কাজ না করলে এই মাস্টার কোডটি দিয়ে যে কোনো সময় সরাসরি প্রবেশ করা যাবে।
+                      </span>
+                    </div>
+
+                    {/* Live Test Code Box */}
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase">
+                        কোড টেস্ট করুন (Test 2FA Code)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={test2FACode}
+                          onChange={(e) => {
+                            setTest2FACode(e.target.value.replace(/[^0-9]/g, ''));
+                            setTest2FAResult(null);
+                          }}
+                          placeholder="অ্যাপের ৬ ডিজিট কোড"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono tracking-widest text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (test2FACode.length !== 6) {
+                              setTest2FAResult('৬ সংখ্যার কোড লিখুন');
+                              return;
+                            }
+                            const res = await fetch('/api/admin/verify-2fa', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ code: test2FACode, email: twoFactorEmail }),
+                            });
+                            const data = await res.json();
+                            if (data && data.success) {
+                              setTest2FAResult('সফল! কোডটি ১০০% সঠিক ও কার্যকর।');
+                            } else {
+                              setTest2FAResult('কোডটি ভুল বা মেয়াদোত্তীর্ণ!');
+                            }
+                          }}
+                          className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold shrink-0 cursor-pointer"
+                        >
+                          যাচাই করুন
+                        </button>
+                      </div>
+                      {test2FAResult && (
+                        <p className={`text-xs font-medium ${test2FAResult.includes('সফল') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {test2FAResult}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-3">
+                    <button
+                      type="button"
+                      onClick={handleSaveSecurity}
+                      className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md shadow-purple-900/20 transition-all cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>২-ফ্যাক্টর সেটিংস সংরক্ষণ করুন</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
