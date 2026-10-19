@@ -4,13 +4,16 @@ import './index.css';
 import { StoreSettingsProvider } from './context/StoreSettingsContext';
 import { CustomPagesProvider } from './context/CustomPagesContext';
 import { SuccessModalProvider } from './context/SuccessModalContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
-  <StoreSettingsProvider>
-    <CustomPagesProvider>
-      <SuccessModalProvider>
-        <App />
-      </SuccessModalProvider>
-    </CustomPagesProvider>
-  </StoreSettingsProvider>
+  <ErrorBoundary>
+    <StoreSettingsProvider>
+      <CustomPagesProvider>
+        <SuccessModalProvider>
+          <App />
+        </SuccessModalProvider>
+      </CustomPagesProvider>
+    </StoreSettingsProvider>
+  </ErrorBoundary>
 );
