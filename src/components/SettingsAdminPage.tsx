@@ -43,7 +43,8 @@ import {
   UploadCloud,
   Upload,
   RefreshCw,
-  Menu
+  Menu,
+  MessageSquare
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import { useStoreSettings } from '../context/StoreSettingsContext';

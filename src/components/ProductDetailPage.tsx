@@ -286,7 +286,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     // Customer review submitted with Pending status: NEVER shown publicly until Super Admin approves!
     submitCustomerReview({
       productId: product.id,
-      productName: product.title || product.name,
+      productName: (product as any).title || product.name,
       reviewerName: reviewerName.trim() || 'সম্মানিত ক্রেতা',
       rating: experienceRating,
       reviewComment: reviewText.trim(),
