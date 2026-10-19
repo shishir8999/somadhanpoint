@@ -1,3 +1,17 @@
+<IfModule mod_headers.c>
+  # 1. Never cache index.html
+  <FilesMatch "^(index\.html)?$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  # 2. Allow long cache for immutable hashed assets
+  <FilesMatch "\.(css|js|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -10,11 +24,20 @@
   RewriteCond %{REQUEST_URI} ^/api(/.*)?$ [NC]
   RewriteRule ^api/?(.*)$ api.php?endpoint=$1 [QSA,L]
 
-  # 2. Existing static files and folders served directly
+  # 2. Prevent MIME error: if an old/deleted .js or .css asset is requested, fallback to current index.js or index.css
+  RewriteCond %{REQUEST_URI} ^/assets/.*\.js$ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^assets/.*\.js$ assets/index.js [L]
+
+  RewriteCond %{REQUEST_URI} ^/assets/.*\.css$ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^assets/.*\.css$ assets/index.css [L]
+
+  # 3. Existing static files and folders served directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # 3. All other page routes served by React SPA
+  # 4. All other page routes served by React SPA
   RewriteRule ^ index.html [L]
 </IfModule>
