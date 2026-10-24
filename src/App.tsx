@@ -14,7 +14,7 @@ import { NavBar } from './components/NavBar';
 import { HeroSlider } from './components/HeroSlider';
 import { CategoriesCarousel } from './components/CategoriesCarousel';
 import { ProductSectionGrid } from './components/ProductSectionGrid';
-import { SpicePromoBanner } from './components/SpicePromoBanner';
+import { FashionPromoBanner } from './components/FashionPromoBanner';
 import { BrandSection } from './components/BrandSection';
 import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { FooterNew } from './components/FooterNew';
@@ -179,6 +179,7 @@ export default function App() {
     | 'admin_messages'
     | 'admin_custom_pages'
     | 'admin_settings'
+    | 'admin_slider_settings'
   >('home');
 
   // Initial tab for OrderCheckoutPage ('checkout' | 'tracking')
@@ -707,6 +708,9 @@ export default function App() {
       case 'settings':
         setCurrentView('admin_settings');
         break;
+      case 'slider_settings':
+        setCurrentView('admin_slider_settings');
+        break;
       case 'custom_pages':
         setCurrentView('admin_custom_pages');
         break;
@@ -778,6 +782,17 @@ export default function App() {
   if (currentView === 'admin_settings') {
     return (
       <SettingsAdminPage
+        onNavigate={handleAdminNavigate}
+        onBackToStore={() => setCurrentView('home')}
+      />
+    );
+  }
+
+  // Super Admin: Home Slider Settings Page
+  if (currentView === 'admin_slider_settings') {
+    return (
+      <SettingsAdminPage
+        initialTab="slider"
         onNavigate={handleAdminNavigate}
         onBackToStore={() => setCurrentView('home')}
       />
@@ -1267,8 +1282,8 @@ export default function App() {
             }}
           />
 
-          {/* Middle Promotional Banner: Spice Masala Banner */}
-          <SpicePromoBanner />
+          {/* Middle Promotional Banner: Fashion, Bags & Shoes Promo */}
+          <FashionPromoBanner />
 
           {/* Section 2: Flash Sale */}
           <ProductSectionGrid

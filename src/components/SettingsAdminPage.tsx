@@ -49,10 +49,18 @@ import {
   QrCode,
   Copy,
   Lock,
-  KeyRound
+  KeyRound,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  Sparkles,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ShoppingBag
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
-import { useStoreSettings } from '../context/StoreSettingsContext';
+import { useStoreSettings, FASHION_DEFAULT_BANNERS, BannerSlide } from '../context/StoreSettingsContext';
 import {
   initFacebookPixel,
   trackFacebookEvent,
@@ -68,6 +76,7 @@ import { saveSettingsToDatabase } from '../utils/apiSync';
 interface SettingsAdminPageProps {
   onNavigate: (page: AdminPageType) => void;
   onBackToStore: () => void;
+  initialTab?: 'web' | 'slider' | 'order' | 'coupons' | 'page' | 'pixel' | 'security';
 }
 
 export interface CouponItem {
@@ -83,10 +92,17 @@ export interface CouponItem {
 export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   onNavigate,
   onBackToStore,
+  initialTab,
 }) => {
   const { settings, updateSettings } = useStoreSettings();
-  const [activeTab, setActiveTab] = useState<'web' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'>('web');
+  const [activeTab, setActiveTab] = useState<'web' | 'slider' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'>(initialTab || 'web');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Security & 2FA State
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
@@ -150,7 +166,130 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   const [developerUrl, setDeveloperUrl] = useState(
     settings.developerUrl || 'https://www.facebook.com/shishir9barai'
   );
-  const [banners, setBanners] = useState(settings.banners || []);
+  const [banners, setBanners] = useState<BannerSlide[]>(
+    settings.banners && settings.banners.length > 0 ? settings.banners : FASHION_DEFAULT_BANNERS
+  );
+
+  useEffect(() => {
+    if (settings.banners && settings.banners.length > 0) {
+      setBanners(settings.banners);
+    }
+  }, [settings.banners]);
+
+  // Dedicated Slider Management State
+  const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
+  const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+  const [slideTitle, setSlideTitle] = useState('');
+  const [slideSubtitle, setSlideSubtitle] = useState('');
+  const [slideButtonText, setSlideButtonText] = useState('কালেকশন দেখুন');
+  const [slideLink, setSlideLink] = useState('#flash-sale');
+  const [slideImageUrl, setSlideImageUrl] = useState('');
+  const [slideImageMode, setSlideImageMode] = useState<'upload' | 'url'>('upload');
+  const [previewSlideIdx, setPreviewSlideIdx] = useState(0);
+  const slideFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenAddSlide = () => {
+    setEditingSlideId(null);
+    setSlideTitle('');
+    setSlideSubtitle('');
+    setSlideButtonText('কালেকশন দেখুন');
+    setSlideLink('#flash-sale');
+    setSlideImageUrl('');
+    setSlideImageMode('upload');
+    setIsSlideModalOpen(true);
+  };
+
+  const handleOpenEditSlide = (slide: BannerSlide) => {
+    setEditingSlideId(slide.id);
+    setSlideTitle(slide.title || '');
+    setSlideSubtitle(slide.subtitle || '');
+    setSlideButtonText(slide.buttonText || 'কালেকশন দেখুন');
+    setSlideLink(slide.link || '#flash-sale');
+    setSlideImageUrl(slide.imageUrl || '');
+    setSlideImageMode(slide.imageUrl?.startsWith('http') ? 'url' : 'upload');
+    setIsSlideModalOpen(true);
+  };
+
+  const handleSaveSlide = () => {
+    if (!slideImageUrl.trim()) {
+      showToast('অনুগ্রহ করে স্লাইডারের ছবি আপলোড করুন অথবা ছবির লিংক দিন');
+      return;
+    }
+
+    let updatedList: BannerSlide[];
+    if (editingSlideId) {
+      updatedList = banners.map((b) =>
+        b.id === editingSlideId
+          ? {
+              ...b,
+              title: slideTitle.trim() || 'ফ্যাশন কালেকশন',
+              subtitle: slideSubtitle.trim(),
+              buttonText: slideButtonText.trim() || 'কালেকশন দেখুন',
+              link: slideLink.trim() || '#flash-sale',
+              imageUrl: slideImageUrl.trim(),
+            }
+          : b
+      );
+    } else {
+      const newSlide: BannerSlide = {
+        id: `b-slide-${Date.now()}`,
+        title: slideTitle.trim() || 'ফ্যাশন কালেকশন',
+        subtitle: slideSubtitle.trim(),
+        buttonText: slideButtonText.trim() || 'কালেকশন দেখুন',
+        link: slideLink.trim() || '#flash-sale',
+        imageUrl: slideImageUrl.trim(),
+      };
+      updatedList = [...banners, newSlide];
+    }
+
+    setBanners(updatedList);
+    updateSettings({ banners: updatedList });
+    setIsSlideModalOpen(false);
+    setEditingSlideId(null);
+    showToast(editingSlideId ? 'স্লাইডার সফলভাবে আপডেট হয়েছে!' : 'নতুন স্লাইড সফলভাবে যুক্ত হয়েছে!');
+    triggerSuccessPopup('স্লাইডার সেভ হয়েছে!', 'স্লাইডারের পরিবর্তন ডাটাবেজে স্থায়ীভাবে সংরক্ষণ করা হয়েছে।');
+  };
+
+  const handleMoveSlide = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= banners.length) return;
+    const updated = [...banners];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+    setBanners(updated);
+    updateSettings({ banners: updated });
+    showToast('স্লাইডারের ক্রম সফলভাবে পরিবর্তন করা হয়েছে!');
+  };
+
+  const handleRestoreFashionDefaults = () => {
+    if (window.confirm('আপনি কি ডিফল্ট ৪টি ফ্যাশন স্লাইড (পোশাক, লেডিস ব্যাগ, জুতা ও অফার) রিস্টোর করতে চান?')) {
+      setBanners(FASHION_DEFAULT_BANNERS);
+      updateSettings({ banners: FASHION_DEFAULT_BANNERS });
+      showToast('ডিফল্ট ফ্যাশন স্লাইডার রিস্টোর করা হয়েছে!');
+      triggerSuccessPopup('ডিফল্ট স্লাইডার সক্রিয় হয়েছে', 'পোশাক, জুতা ও লেডিস ব্যাগের ৪টি আকর্ষণীয় স্লাইড ডাটাবেজে রিস্টোর করা হয়েছে।');
+    }
+  };
+
+  const handleSlideModalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('অনুগ্রহ করে শুধুমাত্র ছবি ফাইল নির্বাচন করুন');
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      showToast('ছবির সাইজ সর্বোচ্চ 6MB হতে পারবে');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setSlideImageUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor || '#fff');
   const [bgColor, setBgColor] = useState(settings.bgColor || '#990000');
   const [phone1, setPhone1] = useState(settings.phone1 || '01982708789');
@@ -763,6 +902,18 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('slider')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'slider'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Home Slider (স্লাইডার)</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('security')}
               className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
                 activeTab === 'security'
@@ -845,6 +996,279 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
               <button onClick={() => setToastMessage(null)} className="text-emerald-500 hover:text-emerald-700">
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB: HOME SLIDER MANAGEMENT (স্লাইডার সেটিংস)                 */}
+          {/* ============================================================== */}
+          {activeTab === 'slider' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-[#18080c] via-[#2d0f17] to-[#140609] rounded-2xl p-6 text-white border border-rose-900/40 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.3)] shrink-0">
+                    <Sliders className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold">হোম স্লাইডার ম্যানেজমেন্ট (Home Slider)</h2>
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {banners.length}টি স্লাইড সক্রিয়
+                      </span>
+                    </div>
+                    <p className="text-xs text-rose-200/80 mt-1">
+                      পোশাক, জুতা ও লেডিস ব্যাগের জন্য আকর্ষণীয় স্লাইড ব্যানার, ক্যাপশন ও বাটন পরিবর্তন করুন
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleRestoreFashionDefaults}
+                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/20 flex items-center gap-1.5 cursor-pointer backdrop-blur-sm"
+                    title="ডিফল্ট ফ্যাশন স্লাইডার রিস্টোর করুন"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                    <span>ডিফল্ট ফ্যাশন স্লাইড রিস্টোর</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAddSlide}
+                    className="px-4 py-2 rounded-xl bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ নতুন স্লাইড যোগ করুন</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Interactive Live Preview */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-[#990000]" />
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      লাইভ স্লাইডার প্রিভিউ (Live Storefront Preview)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    ওয়েবসাইটে কাস্টমার যেভাবে দেখবে
+                  </span>
+                </div>
+
+                {banners.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs">
+                    কোনো স্লাইডার তৈরি করা নেই। "+ নতুন স্লাইড যোগ করুন" বাটনে ক্লিক করুন।
+                  </div>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden aspect-[16/9] sm:aspect-[21/9] md:aspect-[26/8] bg-slate-950 group shadow-md select-none">
+                    {/* Active slide display */}
+                    {banners.map((b, idx) => {
+                      const isActive = idx === previewSlideIdx;
+                      return (
+                        <div
+                          key={b.id || idx}
+                          className={`absolute inset-0 transition-opacity duration-500 ${
+                            isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                          }`}
+                        >
+                          <img
+                            src={b.imageUrl}
+                            alt={b.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
+                          <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-10 max-w-lg text-white">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/90 text-white text-[10px] font-bold tracking-wide uppercase shadow-sm w-fit mb-2">
+                              <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                              <span>ফ্যাশন কালেকশন ২০২৬</span>
+                            </div>
+                            <h3 className="text-sm sm:text-xl md:text-2xl font-black text-white leading-snug drop-shadow line-clamp-2">
+                              {b.title}
+                            </h3>
+                            {b.subtitle && (
+                              <p className="mt-1 text-[10px] sm:text-xs text-slate-200 line-clamp-2">
+                                {b.subtitle}
+                              </p>
+                            )}
+                            <div className="mt-2.5">
+                              <span className="inline-flex items-center gap-1.5 bg-[#990000] text-white font-bold text-[11px] sm:text-xs px-3.5 py-1.5 rounded-md shadow">
+                                <ShoppingBag className="w-3 h-3 text-amber-300" />
+                                <span>{b.buttonText || 'কালেকশন দেখুন'}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Prev/Next buttons for preview */}
+                    {banners.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewSlideIdx((prev) => (prev === 0 ? banners.length - 1 : prev - 1))
+                          }
+                          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSlideIdx((prev) => (prev + 1) % banners.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm cursor-pointer"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                          {banners.map((_, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewSlideIdx(idx)}
+                              className={`h-1.5 rounded-full transition-all ${
+                                previewSlideIdx === idx ? 'w-5 bg-red-500' : 'w-1.5 bg-white/60'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Slide List */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-[#990000]" />
+                    <h3 className="text-sm font-bold text-slate-800">
+                      সকল স্লাইডার তালিকা ({banners.length}টি)
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddSlide}
+                    className="text-xs font-bold text-[#990000] hover:text-[#800000] flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>নতুন স্লাইড</span>
+                  </button>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {banners.map((slide, index) => (
+                    <div
+                      key={slide.id || index}
+                      className="p-4 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                    >
+                      {/* Left: Thumbnail and details */}
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        {/* Order badge */}
+                        <div className="flex flex-col items-center gap-1 shrink-0 pt-1">
+                          <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center font-mono">
+                            {index + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleMoveSlide(index, 'up')}
+                              className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                              title="উপরে নিন"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === banners.length - 1}
+                              onClick={() => handleMoveSlide(index, 'down')}
+                              className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                              title="নিচে নিন"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Slide Thumbnail */}
+                        <div className="relative w-28 sm:w-36 aspect-[16/9] rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 shadow-xs">
+                          <img
+                            src={slide.imageUrl}
+                            alt={slide.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        {/* Title, Subtitle, CTA info */}
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
+                            {slide.title || 'শিরোনাম নেই'}
+                          </h4>
+                          {slide.subtitle && (
+                            <p className="text-xs text-slate-500 line-clamp-2">
+                              {slide.subtitle}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                            <span className="inline-flex items-center gap-1 bg-rose-50 text-[#990000] px-2 py-0.5 rounded font-semibold border border-rose-100">
+                              বাটন: {slide.buttonText || 'কালেকশন দেখুন'}
+                            </span>
+                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono truncate max-w-[200px]">
+                              লিংক: {slide.link || '#flash-sale'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewSlideIdx(index);
+                            window.scrollTo({ top: 100, behavior: 'smooth' });
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                          title="প্রিভিউ দেখুন"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="hidden sm:inline">প্রিভিউ</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditSlide(slide)}
+                          className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                          title="এডিট করুন"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>এডিট</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('আপনি কি এই স্লাইডটি ডিলিট করতে চান?')) {
+                              handleDeleteBanner(slide.id);
+                            }
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                          title="ডিলিট করুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">ডিলিট</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -2459,6 +2883,26 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                   </span>
                 </div>
 
+                {/* Shortcut to full Slider Settings */}
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-[#990000]" />
+                      <span>পূর্ণাঙ্গ স্লাইডার কন্ট্রোল, টাইটেল ও টেক্সট এডিটর</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      পোশাক, জুতা ও লেডিস ব্যাগের জন্য স্লাইডারের শিরোনাম, সাব-টাইটেল, বাটন টেক্সট, টার্গেট লিংক এবং ক্রম পরিবর্তন করতে স্লাইডার সেটিংসে যান।
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('slider')}
+                    className="px-3.5 py-1.5 bg-[#990000] hover:bg-[#800000] text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5"
+                  >
+                    <span>স্লাইডার সেটিংসে যান →</span>
+                  </button>
+                </div>
+
                 {/* Hidden File Inputs for Banner Upload */}
                 <input
                   ref={bannerFileInputRef}
@@ -3078,6 +3522,184 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
         buttonText="ঠিক আছে (OK)"
         onViewSite={onBackToStore}
       />
+
+      {/* ============================================================== */}
+      {/* MODAL: ADD / EDIT SLIDE                                        */}
+      {/* ============================================================== */}
+      {isSlideModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-[#990000]" />
+                <h3 className="text-base font-bold text-slate-900">
+                  {editingSlideId ? 'স্লাইড এডিট করুন' : 'নতুন স্লাইড তৈরি করুন'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSlideModalOpen(false)}
+                className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-3.5 text-xs">
+              {/* Title */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  স্লাইড টাইটেল (Title) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={slideTitle}
+                  onChange={(e) => setSlideTitle(e.target.value)}
+                  placeholder="যেমন: প্রিমিয়াম পোশাক ও ট্রেন্ডি ফ্যাশন কালেকশন"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] font-semibold text-slate-900"
+                />
+              </div>
+
+              {/* Subtitle */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  সাব-টাইটেল / বিবরণ (Subtitle)
+                </label>
+                <textarea
+                  rows={2}
+                  value={slideSubtitle}
+                  onChange={(e) => setSlideSubtitle(e.target.value)}
+                  placeholder="যেমন: সেরা মানের ফেব্রিক ও আধুনিক ডিজাইনের দেশীয় পোশাক কালেকশন"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-slate-800"
+                />
+              </div>
+
+              {/* Button text & Link */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    বাটনের টেক্সট (Button Text)
+                  </label>
+                  <input
+                    type="text"
+                    value={slideButtonText}
+                    onChange={(e) => setSlideButtonText(e.target.value)}
+                    placeholder="কালেকশন দেখুন / অর্ডার করুন"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    টার্গেট লিংক (Link URL)
+                  </label>
+                  <input
+                    type="text"
+                    value={slideLink}
+                    onChange={(e) => setSlideLink(e.target.value)}
+                    placeholder="#flash-sale অথবা URL"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono text-[11px]"
+                  />
+                </div>
+              </div>
+
+              {/* Image Input (Upload / URL) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700">
+                    স্লাইডার ছবি (Image) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setSlideImageMode('upload')}
+                      className={`px-2 py-0.5 rounded cursor-pointer ${
+                        slideImageMode === 'upload' ? 'bg-white shadow text-[#990000]' : 'text-slate-500'
+                      }`}
+                    >
+                      কম্পিউটার থেকে
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSlideImageMode('url')}
+                      className={`px-2 py-0.5 rounded cursor-pointer ${
+                        slideImageMode === 'url' ? 'bg-white shadow text-[#990000]' : 'text-slate-500'
+                      }`}
+                    >
+                      ইন্টারনেট URL
+                    </button>
+                  </div>
+                </div>
+
+                {slideImageMode === 'upload' ? (
+                  <div>
+                    <input
+                      ref={slideFileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={handleSlideModalFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => slideFileInputRef.current?.click()}
+                      className="w-full py-3 px-4 border-2 border-dashed border-rose-300 hover:border-[#990000] rounded-xl flex items-center justify-center gap-2 bg-rose-50/30 hover:bg-rose-50/60 text-[#990000] font-bold transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>কম্পিউটার থেকে ছবি পছন্দ করুন</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="text"
+                      value={slideImageUrl}
+                      onChange={(e) => setSlideImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono text-[11px]"
+                    />
+                  </div>
+                )}
+
+                {/* Image Live Preview */}
+                {slideImageUrl && (
+                  <div className="relative rounded-xl overflow-hidden aspect-[16/9] border border-slate-200 mt-2 bg-slate-900 group">
+                    <img
+                      src={slideImageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-white text-xs font-bold bg-black/60 px-3 py-1 rounded">
+                        লাইভ প্রিভিউ
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSlideModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                বাতিল করুন
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSlide}
+                className="px-5 py-2 rounded-lg bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold transition-colors shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>স্লাইড সংরক্ষণ করুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

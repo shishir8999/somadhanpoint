@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchSettingsFromDatabase, saveSettingsToDatabase } from '../utils/apiSync';
 
+export interface BannerSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  buttonText?: string;
+  imageUrl: string;
+  link: string;
+}
+
 export interface StoreSettings {
   siteName: string;
   slogan: string;
@@ -34,8 +43,60 @@ export interface StoreSettings {
   supportPhone?: string;
   supportReplyMessage?: string;
   supportCallButtonText?: string;
-  banners: Array<{ id: string; title: string; imageUrl: string; link: string }>;
+  banners: BannerSlide[];
 }
+
+export const FASHION_DEFAULT_BANNERS: BannerSlide[] = [
+  {
+    id: 'b-fashion-1',
+    title: 'প্রিমিয়াম পোশাক ও ট্রেন্ডি ফ্যাশন কালেকশন',
+    subtitle: 'সেরা মানের ফেব্রিক, আধুনিক ডিজাইন ও স্টাইলিশ পোশাকের বিশাল সম্ভার',
+    buttonText: 'কালেকশন দেখুন',
+    imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80',
+    link: '#flash-sale',
+  },
+  {
+    id: 'b-fashion-2',
+    title: 'এক্সক্লুসিভ লেডিস ব্যাগ ও হ্যান্ডব্যাগ কালেকশন',
+    subtitle: 'আকর্ষণীয় ডিজাইনের প্রিমিয়াম কোয়ালিটি লেদার হ্যান্ডব্যাগ, ক্লাচ ও পার্স',
+    buttonText: 'ব্যাগ কিনুন',
+    imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=1600&auto=format&fit=crop&q=80',
+    link: '#top-rated',
+  },
+  {
+    id: 'b-fashion-3',
+    title: 'ফ্যাশনেবল জুতা ও ফুটওয়্যার কালেকশন',
+    subtitle: 'লেডিস হিলস, জেন্টস স্নিকার্স ও আরামদায়ক ক্যাজুয়াল জুতার সেরা কালেকশন',
+    buttonText: 'জুতা কালেকশন',
+    imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=1600&auto=format&fit=crop&q=80',
+    link: '#best-sells',
+  },
+  {
+    id: 'b-fashion-4',
+    title: 'পোশাক, জুতা ও ব্যাগে ধামাকা মেগা অফার',
+    subtitle: 'দেশজুড়ে দ্রুত ক্যাশ অন ডেলিভারি এবং ১০০% আসল কোয়ালিটির নিশ্চয়তা',
+    buttonText: 'অফারটি দেখুন',
+    imageUrl: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1600&auto=format&fit=crop&q=80',
+    link: '#all-new',
+  },
+];
+
+export const isGroceryOrOilBanner = (bannerList?: any[]): boolean => {
+  if (!bannerList || !Array.isArray(bannerList) || bannerList.length === 0) return true;
+  return bannerList.some((b: any) => {
+    const title = (b.title || '').toLowerCase();
+    const url = (b.imageUrl || '').toLowerCase();
+    return (
+      title.includes('তেল') ||
+      title.includes('তৈল') ||
+      title.includes('স্বাস্থ্যকর') ||
+      title.includes('মসলা') ||
+      title.includes('প্রকৃতি') ||
+      url.includes('photo-1474979266404-7eaacbcd87c5') ||
+      url.includes('photo-1587049352846-4a222e784d38')
+    );
+  });
+};
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   siteName: 'Somadhan Point',
@@ -70,20 +131,7 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   supportPhone: '01982708789',
   supportReplyMessage: 'ধন্যবাদ! আমাদের কাস্টমার সাপোর্ট টিম দ্রুত আপনার সাথে যোগাযোগ করবে। সরাসরি ফোনে কথা বলতে ডায়াল করুন 01982708789',
   supportCallButtonText: 'কল করুন',
-  banners: [
-    {
-      id: 'b-1',
-      title: 'স্বাস্থ্যকর তেলে একটিভ থাকুন প্রতিদিন',
-      imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=800&auto=format&fit=crop&q=80',
-      link: 'https://example.com',
-    },
-    {
-      id: 'b-2',
-      title: 'সরাসরি প্রকৃতি থেকে আপনার ঘরে',
-      imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=800&auto=format&fit=crop&q=80',
-      link: 'https://example.com',
-    },
-  ],
+  banners: FASHION_DEFAULT_BANNERS,
 };
 
 interface StoreSettingsContextType {
@@ -179,6 +227,11 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           parsed.footerLogoUrl = '/somadhan-logo.svg';
         }
 
+        // Migrate old grocery / mustard oil banners to fashion banners
+        if (isGroceryOrOilBanner(parsed.banners)) {
+          parsed.banners = FASHION_DEFAULT_BANNERS;
+        }
+
         const updated = { ...DEFAULT_STORE_SETTINGS, ...parsed };
         localStorage.setItem('ecom_store_settings', JSON.stringify(updated));
         return updated;
@@ -206,10 +259,19 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchSettingsFromDatabase().then((dbSettings) => {
       if (dbSettings && isMounted) {
         setSettings((prev) => {
-          const merged = { ...prev, ...dbSettings };
+          let updatedBanners = dbSettings.banners;
+          const hadOldBanners = isGroceryOrOilBanner(updatedBanners);
+          if (hadOldBanners) {
+            updatedBanners = FASHION_DEFAULT_BANNERS;
+          }
+          const merged = { ...prev, ...dbSettings, banners: updatedBanners };
           try {
             localStorage.setItem('ecom_store_settings', JSON.stringify(merged));
           } catch {}
+          // If old grocery banners were stored in DB, update DB permanently
+          if (hadOldBanners) {
+            saveSettingsToDatabase(merged);
+          }
           return merged;
         });
       }

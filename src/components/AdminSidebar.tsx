@@ -20,7 +20,9 @@ import {
   LogOut,
   BookOpen,
   Menu,
-  X
+  X,
+  Sliders,
+  ImageIcon
 } from 'lucide-react';
 
 export type AdminPageType =
@@ -33,6 +35,7 @@ export type AdminPageType =
   | 'all_brands'
   | 'product_variants'
   | 'reviews'
+  | 'slider_settings'
   | 'all_admin'
   | 'all_customer'
   | 'customer_wishlist'
@@ -504,7 +507,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && <span>Pages (পেইজসমূহ)</span>}
         </button>
 
-        {/* 10. Settings */}
+        {/* 10. Home Slider Settings (হোম স্লাইডার) */}
+        <button
+          onClick={() => handleNavClick('slider_settings')}
+          title="Home Slider Settings (হোম স্লাইডার)"
+          className={`flex items-center transition-colors text-left cursor-pointer ${
+            collapsed
+              ? `w-10 h-10 justify-center rounded-lg ${
+                  activePage === 'slider_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`
+              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
+                  activePage === 'slider_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
+          {!collapsed && <span>Home Slider (স্লাইডার)</span>}
+        </button>
+
+        {/* 11. Settings */}
         <button
           onClick={() => handleNavClick('settings')}
           title="Settings"

@@ -1,164 +1,195 @@
-import React, { useState, useEffect } from 'react';
-import { useStoreSettings } from '../context/StoreSettingsContext';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useStoreSettings, FASHION_DEFAULT_BANNERS, BannerSlide } from '../context/StoreSettingsContext';
+import { ChevronLeft, ChevronRight, ArrowRight, Sparkles, ShoppingBag } from 'lucide-react';
 
 export const HeroSlider: React.FC = () => {
   const { settings } = useStoreSettings();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const banners = settings.banners && settings.banners.length > 0 ? settings.banners : [];
+  // Fallback to fashion default banners if settings.banners is empty or invalid
+  const banners: BannerSlide[] =
+    settings.banners && settings.banners.length > 0
+      ? settings.banners
+      : FASHION_DEFAULT_BANNERS;
 
-  // Auto-play slider
+  // Auto-slide effect with pause-on-hover
   useEffect(() => {
-    if (banners.length <= 1) return;
+    if (banners.length <= 1 || isHovered) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
-    }, 4500);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [banners.length]);
+  }, [banners.length, isHovered]);
 
-  const handlePrev = () => {
+  const handlePrev = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setCurrentSlide((prev) => (prev === 0 ? banners.length - 1 : prev - 1));
   };
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setCurrentSlide((prev) => (prev + 1) % banners.length);
   };
 
-  // Touch swipe support for mobile
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const handleSlideClick = (slide: BannerSlide) => {
+    if (slide.link) {
+      if (slide.link.startsWith('#')) {
+        const el = document.querySelector(slide.link);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+      } else if (slide.link.startsWith('http://') || slide.link.startsWith('https://')) {
+        window.open(slide.link, '_blank');
+        return;
+      }
+    }
+    // Default fallback: scroll to flash sale or hot deals
+    const target = document.getElementById('flash-sale') || document.getElementById('hot-deals');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
-  const minSwipeDistance = 40;
+  // Touch swipe support for mobile devices
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 45;
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEndX(null);
-    setTouchStartX(e.targetTouches[0].clientX);
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.targetTouches[0].clientX);
+    touchEndX.current = e.targetTouches[0].clientX;
   };
 
   const onTouchEnd = () => {
-    if (!touchStartX || !touchEndX) return;
-    const distance = touchStartX - touchEndX;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > minSwipeDistance) {
       handleNext();
-    } else if (isRightSwipe) {
+    } else if (distance < -minSwipeDistance) {
       handlePrev();
     }
   };
 
-  if (banners.length > 0) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 sm:pt-3 pb-2 select-none">
-        <div
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          className="relative rounded-lg sm:rounded-xl overflow-hidden shadow-xs aspect-[16/9] sm:aspect-[21/9] md:aspect-[28/8] min-h-[160px] sm:min-h-[220px] md:min-h-[280px] bg-slate-900 group"
-        >
-          {banners.map((b, idx) => (
+  return (
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 sm:pt-3 pb-2 select-none">
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-md aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/8] min-h-[190px] sm:min-h-[250px] md:min-h-[320px] bg-slate-950 group"
+      >
+        {banners.map((b, idx) => {
+          const isActive = idx === currentSlide;
+          return (
             <div
               key={b.id || idx}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                idx === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+              onClick={() => handleSlideClick(b)}
+              className={`absolute inset-0 cursor-pointer transition-all duration-700 ease-in-out ${
+                isActive
+                  ? 'opacity-100 scale-100 z-10'
+                  : 'opacity-0 scale-105 z-0 pointer-events-none'
               }`}
             >
+              {/* Background Fashion Photo */}
               <img
                 src={b.imageUrl}
-                alt="Banner"
-                className="w-full h-full object-cover object-center"
+                alt={b.title || 'Fashion Banner'}
+                className="w-full h-full object-cover object-center transform transition-transform duration-1000 ease-out group-hover:scale-102"
+                loading={idx === 0 ? 'eager' : 'lazy'}
               />
-              {b.title && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex items-end p-3.5 sm:p-6 pb-6 sm:pb-7">
-                  <h3 className="text-white text-xs sm:text-lg md:text-2xl font-black drop-shadow-md line-clamp-2 max-w-[85%] sm:max-w-none leading-snug">
-                    {b.title}
-                  </h3>
+
+              {/* Rich Fashion Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent sm:from-black/80 sm:via-black/35 sm:to-black/10" />
+
+              {/* Content Overlay */}
+              <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-10 md:px-14 py-4 max-w-xl md:max-w-2xl text-white">
+                {/* Fashion Pill Badge */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-red-600/90 text-white text-[10px] sm:text-xs font-bold tracking-wide uppercase shadow-sm w-fit mb-2 sm:mb-3 backdrop-blur-xs">
+                  <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                  <span>ফ্যাশন কালেকশন ২০২৬</span>
                 </div>
-              )}
-            </div>
-          ))}
 
-          {/* Navigation Arrows */}
-          {banners.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={handlePrev}
-                className="absolute left-1.5 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-70 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleNext}
-                className="absolute right-1.5 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs opacity-70 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
-                aria-label="Next Slide"
-              >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+                {/* Bengali Title */}
+                <h2 className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black text-white leading-tight sm:leading-snug drop-shadow-lg line-clamp-2">
+                  {b.title}
+                </h2>
 
-              {/* Indicator Dots */}
-              <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">
-                {banners.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setCurrentSlide(idx)}
-                    className={`h-1.5 sm:h-2 rounded-full transition-all cursor-pointer ${
-                      currentSlide === idx ? 'w-4 sm:w-5 bg-white' : 'w-1.5 sm:w-2 bg-white/50 hover:bg-white/80'
-                    }`}
-                    aria-label={`Slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
+                {/* Subtitle */}
+                {b.subtitle && (
+                  <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-sm md:text-base text-slate-200/95 font-medium line-clamp-2 drop-shadow max-w-lg">
+                    {b.subtitle}
+                  </p>
+                )}
 
-  // Fallback default Mustard oil banner if no banners
-  return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2">
-      <div className="relative rounded-md overflow-hidden bg-gradient-to-r from-[#1a120b] via-[#2d1b09] to-[#0f0a05] text-white min-h-[180px] sm:min-h-[220px] md:min-h-[260px] flex items-center shadow-xs">
-        <div className="w-full px-6 sm:px-12 py-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="w-20 sm:w-26 h-36 sm:h-44 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 rounded-lg shadow-xl border-2 border-amber-300/60 flex flex-col items-center justify-between p-2 relative">
-              <div className="w-8 h-4 bg-red-600 rounded-t-sm -mt-3 shadow"></div>
-              <div className="w-16 h-14 bg-white/95 rounded flex flex-col items-center justify-center p-1 text-center shadow-xs">
-                <span className="text-[10px] sm:text-xs font-black text-red-700">সরিষার</span>
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-900">তৈল</span>
-                <span className="text-[7px] text-emerald-700 font-semibold">১০০% খাঁটি</span>
+                {/* Action Button */}
+                <div className="mt-3 sm:mt-5 flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 bg-[#990000] hover:bg-[#800000] text-white font-bold text-xs sm:text-sm px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group-hover:translate-x-1">
+                    <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
+                    <span>{b.buttonText || 'কালেকশন দেখুন'}</span>
+                    <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
               </div>
-              <span className="text-[8px] text-amber-950 font-bold bg-amber-200/90 px-1 rounded">৫ লিটার</span>
             </div>
-            <div className="w-14 sm:w-18 h-28 sm:h-34 bg-gradient-to-b from-amber-400 to-amber-600 rounded-md shadow-lg border border-amber-300 flex flex-col items-center justify-between p-1.5 relative">
-              <div className="w-6 h-3 bg-red-600 rounded-t-xs -mt-2.5"></div>
-              <div className="w-12 h-10 bg-white/90 rounded flex flex-col items-center justify-center text-center">
-                <span className="text-[8px] font-bold text-red-700">ঘানি ভাঙা</span>
-              </div>
-              <span className="text-[7px] text-amber-950 font-bold">১ লিটার</span>
-            </div>
+          );
+        })}
+
+        {/* Slide Counter Badge */}
+        {banners.length > 1 && (
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-5 z-20 bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full border border-white/20">
+            {String(currentSlide + 1).padStart(2, '0')} / {String(banners.length).padStart(2, '0')}
           </div>
-          <div className="text-center md:text-right flex-1">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-snug drop-shadow-md">
-              স্বাস্থ্যকর তেলে
-            </h1>
-            <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-amber-300 mt-1 drop-shadow">
-              অ্যাক্টিভ থাকুন প্রতিদিন
-            </p>
-            <div className="mt-3 inline-block bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-5 py-1.5 rounded shadow cursor-pointer transition-colors">
-              অর্ডার করুন এখনই →
+        )}
+
+        {/* Navigation Arrows */}
+        {banners.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-lg border border-white/20 hover:scale-105 active:scale-95"
+              aria-label="Previous Slide"
+            >
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/45 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-lg border border-white/20 hover:scale-105 active:scale-95"
+              aria-label="Next Slide"
+            >
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+
+            {/* Indicator Dots */}
+            <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/45 backdrop-blur-md px-3 py-1 sm:py-1.5 rounded-full border border-white/15">
+              {banners.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentSlide(idx);
+                  }}
+                  className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                    currentSlide === idx
+                      ? 'w-6 sm:w-8 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                      : 'w-1.5 sm:w-2 bg-white/60 hover:bg-white'
+                  }`}
+                  aria-label={`Slide ${idx + 1}`}
+                />
+              ))}
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
