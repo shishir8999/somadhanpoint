@@ -98,6 +98,19 @@ try {
     // Ignore schema sync error if tables are being set up
 }
 
+// 2.1 Ensure store_settings table and promo_banner column exist
+try {
+    $sCols = $pdo->query("SHOW COLUMNS FROM store_settings")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('promo_banner', $sCols)) {
+        $pdo->exec("ALTER TABLE store_settings ADD COLUMN promo_banner longtext DEFAULT NULL");
+    }
+} catch (Exception $e) {}
+
+// 2.1.1 Clean up legacy grocery / oil categories permanently from MySQL
+try {
+    $pdo->exec("DELETE FROM categories WHERE slug IN ('ghee-oil', 'honey-food', 'spices') OR visual_type IN ('oil_bottle', 'honey_jar', 'spice_pack')");
+} catch (Exception $e) {}
+
 // 2.2 Ensure Admin 2FA Security Table Exists
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS admin_security (
@@ -237,6 +250,7 @@ try {
                         'adminLogoBg' => $row['admin_logo_bg'] ?: 'transparent',
                         'showLogoText' => (bool)$row['show_logo_text'],
                         'banners' => json_decode($row['banners'] ?? '[]', true) ?: [],
+                        'promoBanner' => !empty($row['promo_banner']) ? json_decode($row['promo_banner'], true) : null,
                     ]
                 ], JSON_UNESCAPED_UNICODE);
             } else {
@@ -284,6 +298,7 @@ try {
                     admin_logo_bg = :admin_logo_bg,
                     show_logo_text = :show_logo_text,
                     banners = :banners,
+                    promo_banner = :promo_banner,
                     updated_at = NOW()
                 WHERE id = 1
             ");
@@ -316,6 +331,7 @@ try {
                 ':admin_logo_bg' => $data['adminLogoBg'] ?? 'transparent',
                 ':show_logo_text' => !empty($data['showLogoText']) ? 1 : 0,
                 ':banners' => json_encode($data['banners'] ?? [], JSON_UNESCAPED_UNICODE),
+                ':promo_banner' => isset($data['promoBanner']) ? json_encode($data['promoBanner'], JSON_UNESCAPED_UNICODE) : null,
             ]);
 
             echo json_encode(['success' => true, 'message' => 'Settings permanently saved to MySQL database']);
@@ -583,7 +599,16 @@ try {
 
         if ($method === 'POST') {
             $cats = $body['categories'] ?? [];
-            if (is_array($cats) && count($cats) > 0) {
+            if (is_array($cats)) {
+                $keepIds = array_values(array_filter(array_map(function($c) { return (string)($c['id'] ?? ''); }, $cats)));
+                if (count($keepIds) > 0) {
+                    $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
+                    $delStmt = $pdo->prepare("DELETE FROM categories WHERE id NOT IN ($placeholders)");
+                    $delStmt->execute($keepIds);
+                } elseif (isset($body['categories']) && count($cats) === 0) {
+                    $pdo->exec("DELETE FROM categories");
+                }
+
                 foreach ($cats as $c) {
                     $cId = (string)($c['id'] ?? ('cat-' . time() . '-' . rand(10, 99)));
                     $stmt = $pdo->prepare("
