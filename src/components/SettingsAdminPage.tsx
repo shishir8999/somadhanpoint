@@ -1167,12 +1167,58 @@ src="https://www.facebook.com/tr?id=${idToUse}&ev=PageView&noscript=1"
     }
   };
 
+  const currentSidebarPage: AdminPageType =
+    activeTab === 'web' ? 'settings_web' :
+    activeTab === 'slider' ? 'settings_slider' :
+    activeTab === 'promo' ? 'settings_promo' :
+    activeTab === 'security' ? 'settings_security' :
+    activeTab === 'order' ? 'settings_order' :
+    activeTab === 'coupons' ? 'settings_coupons' :
+    activeTab === 'page' ? 'settings_page' :
+    activeTab === 'pixel' ? 'settings_pixel' : 'settings';
+
+  const handleSidebarNavigate = (page: AdminPageType) => {
+    if (page === 'settings' || page === 'settings_web') {
+      setActiveTab('web');
+      return;
+    }
+    if (page === 'settings_slider' || page === 'slider_settings') {
+      setActiveTab('slider');
+      return;
+    }
+    if (page === 'settings_promo' || page === 'promo_settings') {
+      setActiveTab('promo');
+      return;
+    }
+    if (page === 'settings_security') {
+      setActiveTab('security');
+      return;
+    }
+    if (page === 'settings_order') {
+      setActiveTab('order');
+      return;
+    }
+    if (page === 'settings_coupons') {
+      setActiveTab('coupons');
+      return;
+    }
+    if (page === 'settings_page') {
+      setActiveTab('page');
+      return;
+    }
+    if (page === 'settings_pixel') {
+      setActiveTab('pixel');
+      return;
+    }
+    onNavigate(page);
+  };
+
   return (
     <div className="min-h-screen flex bg-[#f8fafc] text-slate-800 font-sans">
       {/* 1. Left Unified Sidebar */}
       <AdminSidebar
-        activePage="settings"
-        onNavigate={onNavigate}
+        activePage={currentSidebarPage}
+        onNavigate={handleSidebarNavigate}
         onBackToStore={onBackToStore}
       />
 

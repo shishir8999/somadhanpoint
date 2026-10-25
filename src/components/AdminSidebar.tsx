@@ -23,7 +23,11 @@ import {
   X,
   Sliders,
   ImageIcon,
-  Sparkles
+  Sparkles,
+  Globe,
+  ShieldCheck,
+  Tag,
+  Target
 } from 'lucide-react';
 
 export type AdminPageType =
@@ -54,7 +58,16 @@ export type AdminPageType =
   | 'accounting'
   | 'messages'
   | 'custom_pages'
-  | 'settings';
+  | 'settings'
+  | 'settings_web'
+  | 'settings_slider'
+  | 'promo_settings'
+  | 'settings_promo'
+  | 'settings_security'
+  | 'settings_order'
+  | 'settings_coupons'
+  | 'settings_page'
+  | 'settings_pixel';
 
 interface AdminSidebarProps {
   activePage: AdminPageType;
@@ -107,6 +120,29 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const [isCourierExpanded, setIsCourierExpanded] = useState(
     ['courier_integration', 'courier_fee', 'courier_scan', 'courier_payment', 'courier_invoice'].includes(activePage)
   );
+  const settingsPages: string[] = [
+    'settings',
+    'settings_web',
+    'settings_slider',
+    'settings_promo',
+    'settings_security',
+    'settings_order',
+    'settings_coupons',
+    'settings_page',
+    'settings_pixel',
+    'slider_settings',
+    'promo_settings',
+    'custom_pages',
+  ];
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(
+    settingsPages.includes(activePage)
+  );
+
+  useEffect(() => {
+    if (settingsPages.includes(activePage)) {
+      setIsSettingsExpanded(true);
+    }
+  }, [activePage]);
 
   // Sync dark mode class on document.documentElement
   useEffect(() => {
@@ -491,77 +527,85 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && <span>Messages</span>}
         </button>
 
-        {/* 9. Pages (পেইজসমূহ এডিটর) */}
-        <button
-          onClick={() => handleNavClick('custom_pages')}
-          title="Custom Pages Manager (পেইজসমূহ এডিটর)"
-          className={`flex items-center transition-colors text-left cursor-pointer ${
-            collapsed
-              ? `w-10 h-10 justify-center rounded-lg ${
-                  activePage === 'custom_pages' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
-                  activePage === 'custom_pages' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-          }`}
-        >
-          <BookOpen className="w-4 h-4 text-emerald-400 shrink-0" />
-          {!collapsed && <span>Pages (পেইজসমূহ)</span>}
-        </button>
+        {/* 9. Settings (Accordion Dropdown) */}
+        <div className={collapsed ? 'w-full flex flex-col items-center' : 'w-full'}>
+          <button
+            onClick={() => {
+              if (collapsed) {
+                handleNavClick('settings');
+              } else {
+                setIsSettingsExpanded(!isSettingsExpanded);
+              }
+            }}
+            title="Settings (ওয়েব, স্লাইডার, প্রমো, সিকিউরিটি, অর্ডার, কুপন, পেইজ, পিক্সেল)"
+            className={`flex items-center transition-colors text-left cursor-pointer ${
+              collapsed
+                ? `w-10 h-10 justify-center rounded-lg ${
+                    settingsPages.includes(activePage)
+                      ? 'bg-[#1f2937] text-white font-bold'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  }`
+                : `w-full justify-between px-3 py-2 rounded-lg ${
+                    settingsPages.includes(activePage)
+                      ? 'bg-[#1f2937]/70 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  }`
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Settings className="w-4 h-4 text-emerald-400 shrink-0" />
+              {!collapsed && <span>Settings</span>}
+            </div>
+            {!collapsed && (
+              isSettingsExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              )
+            )}
+          </button>
 
-        {/* 10. Home Slider Settings (হোম স্লাইডার) */}
-        <button
-          onClick={() => handleNavClick('slider_settings')}
-          title="Home Slider Settings (হোম স্লাইডার)"
-          className={`flex items-center transition-colors text-left cursor-pointer ${
-            collapsed
-              ? `w-10 h-10 justify-center rounded-lg ${
-                  activePage === 'slider_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
-                  activePage === 'slider_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-          }`}
-        >
-          <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
-          {!collapsed && <span>Home Slider (স্লাইডার)</span>}
-        </button>
-
-        {/* 11. Promo Banner Settings (প্রমো ব্যানার ও কালেকশন) */}
-        <button
-          onClick={() => handleNavClick('promo_settings')}
-          title="Promo Banner Settings (প্রমো ব্যানার ও স্পেশাল কালেকশন)"
-          className={`flex items-center transition-colors text-left cursor-pointer ${
-            collapsed
-              ? `w-10 h-10 justify-center rounded-lg ${
-                  activePage === 'promo_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
-                  activePage === 'promo_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-          {!collapsed && <span>Promo Banner (প্রমো ব্যানার)</span>}
-        </button>
-
-        {/* 12. Settings */}
-        <button
-          onClick={() => handleNavClick('settings')}
-          title="Settings"
-          className={`flex items-center transition-colors text-left cursor-pointer ${
-            collapsed
-              ? `w-10 h-10 justify-center rounded-lg ${
-                  activePage === 'settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
-                  activePage === 'settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                }`
-          }`}
-        >
-          <Settings className="w-4 h-4 text-emerald-400 shrink-0" />
-          {!collapsed && <span>Settings</span>}
-        </button>
+          {!collapsed && isSettingsExpanded && (
+            <div className="pl-6 pr-2 py-1 space-y-0.5 border-l border-slate-700/60 ml-4 my-1">
+              {[
+                { id: 'settings_web', label: 'Web Settings (ওয়েব)', icon: Globe },
+                { id: 'settings_slider', label: 'Home Slider (স্লাইডার)', icon: Sliders },
+                { id: 'settings_promo', label: 'Promo Banner (প্রমো ব্যানার)', icon: Sparkles },
+                { id: 'settings_security', label: '2FA Security (সিকিউরিটি)', icon: ShieldCheck },
+                { id: 'settings_order', label: 'Order Settings (অর্ডার)', icon: Sliders },
+                { id: 'settings_coupons', label: 'Coupons (কুপন)', icon: Tag },
+                { id: 'settings_page', label: 'Page Settings (পেইজ)', icon: FileText },
+                { id: 'settings_pixel', label: 'Pixel Settings (পিক্সেল)', icon: Target },
+              ].map((item) => {
+                const ItemIcon = item.icon;
+                const isItemActive =
+                  activePage === item.id ||
+                  (item.id === 'settings_web' && activePage === 'settings') ||
+                  (item.id === 'settings_slider' && activePage === 'slider_settings') ||
+                  (item.id === 'settings_promo' && activePage === 'promo_settings') ||
+                  (item.id === 'settings_page' && activePage === 'custom_pages');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id as AdminPageType)}
+                    className={`w-full text-left px-2.5 py-1.5 rounded text-[11px] transition-colors flex items-center gap-2 cursor-pointer ${
+                      isItemActive
+                        ? 'bg-[#1e293b] text-white font-bold shadow-xs'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <ItemIcon
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isItemActive ? 'text-emerald-400' : 'text-slate-500'
+                      }`}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   };

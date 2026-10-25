@@ -186,6 +186,11 @@ export default function App() {
   // Initial tab for OrderCheckoutPage ('checkout' | 'tracking')
   const [orderInitialTab, setOrderInitialTab] = useState<'checkout' | 'tracking'>('checkout');
 
+  // Super Admin: Active tab in SettingsAdminPage
+  const [adminSettingsTab, setAdminSettingsTab] = useState<
+    'web' | 'slider' | 'promo' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'
+  >('web');
+
   const handleOpenOrderTracking = () => {
     setOrderInitialTab('tracking');
     setCurrentView('order_page');
@@ -743,13 +748,39 @@ export default function App() {
         setCurrentView('admin_messages');
         break;
       case 'settings':
+      case 'settings_web':
+        setAdminSettingsTab('web');
         setCurrentView('admin_settings');
         break;
+      case 'settings_slider':
       case 'slider_settings':
-        setCurrentView('admin_slider_settings');
+        setAdminSettingsTab('slider');
+        setCurrentView('admin_settings');
         break;
+      case 'settings_promo':
       case 'promo_settings':
-        setCurrentView('admin_promo_settings');
+        setAdminSettingsTab('promo');
+        setCurrentView('admin_settings');
+        break;
+      case 'settings_security':
+        setAdminSettingsTab('security');
+        setCurrentView('admin_settings');
+        break;
+      case 'settings_order':
+        setAdminSettingsTab('order');
+        setCurrentView('admin_settings');
+        break;
+      case 'settings_coupons':
+        setAdminSettingsTab('coupons');
+        setCurrentView('admin_settings');
+        break;
+      case 'settings_page':
+        setAdminSettingsTab('page');
+        setCurrentView('admin_settings');
+        break;
+      case 'settings_pixel':
+        setAdminSettingsTab('pixel');
+        setCurrentView('admin_settings');
         break;
       case 'custom_pages':
         setCurrentView('admin_custom_pages');
@@ -822,6 +853,7 @@ export default function App() {
   if (currentView === 'admin_settings') {
     return (
       <SettingsAdminPage
+        initialTab={adminSettingsTab}
         onNavigate={handleAdminNavigate}
         onBackToStore={() => setCurrentView('home')}
       />
