@@ -22,7 +22,8 @@ import {
   Menu,
   X,
   Sliders,
-  ImageIcon
+  ImageIcon,
+  Sparkles
 } from 'lucide-react';
 
 export type AdminPageType =
@@ -36,6 +37,7 @@ export type AdminPageType =
   | 'product_variants'
   | 'reviews'
   | 'slider_settings'
+  | 'promo_settings'
   | 'all_admin'
   | 'all_customer'
   | 'customer_wishlist'
@@ -525,7 +527,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && <span>Home Slider (স্লাইডার)</span>}
         </button>
 
-        {/* 11. Settings */}
+        {/* 11. Promo Banner Settings (প্রমো ব্যানার ও কালেকশন) */}
+        <button
+          onClick={() => handleNavClick('promo_settings')}
+          title="Promo Banner Settings (প্রমো ব্যানার ও স্পেশাল কালেকশন)"
+          className={`flex items-center transition-colors text-left cursor-pointer ${
+            collapsed
+              ? `w-10 h-10 justify-center rounded-lg ${
+                  activePage === 'promo_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`
+              : `w-full gap-2.5 px-3 py-2 rounded-lg ${
+                  activePage === 'promo_settings' ? 'bg-[#1f2937] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          {!collapsed && <span>Promo Banner (প্রমো ব্যানার)</span>}
+        </button>
+
+        {/* 12. Settings */}
         <button
           onClick={() => handleNavClick('settings')}
           title="Settings"

@@ -60,7 +60,14 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
-import { useStoreSettings, FASHION_DEFAULT_BANNERS, BannerSlide } from '../context/StoreSettingsContext';
+import {
+  useStoreSettings,
+  FASHION_DEFAULT_BANNERS,
+  BannerSlide,
+  DEFAULT_PROMO_BANNER_SETTINGS,
+  PromoBannerSettings,
+  PromoCard
+} from '../context/StoreSettingsContext';
 import {
   initFacebookPixel,
   trackFacebookEvent,
@@ -76,7 +83,7 @@ import { saveSettingsToDatabase } from '../utils/apiSync';
 interface SettingsAdminPageProps {
   onNavigate: (page: AdminPageType) => void;
   onBackToStore: () => void;
-  initialTab?: 'web' | 'slider' | 'order' | 'coupons' | 'page' | 'pixel' | 'security';
+  initialTab?: 'web' | 'slider' | 'promo' | 'order' | 'coupons' | 'page' | 'pixel' | 'security';
 }
 
 export interface CouponItem {
@@ -95,7 +102,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
   initialTab,
 }) => {
   const { settings, updateSettings } = useStoreSettings();
-  const [activeTab, setActiveTab] = useState<'web' | 'slider' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'>(initialTab || 'web');
+  const [activeTab, setActiveTab] = useState<'web' | 'slider' | 'promo' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'>(initialTab || 'web');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -288,6 +295,230 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       setSlideImageUrl(result);
     };
     reader.readAsDataURL(file);
+  };
+
+  // -------------------------------------------------------------
+  // DEDICATED PROMO BANNER MANAGEMENT STATE & HANDLERS
+  // -------------------------------------------------------------
+  const initialPromo = settings.promoBanner || DEFAULT_PROMO_BANNER_SETTINGS;
+  const [promoEnabled, setPromoEnabled] = useState(initialPromo.enabled !== false);
+  const [promoBadgeText, setPromoBadgeText] = useState(initialPromo.badgeText || 'এক্সক্লুসিভ ফ্যাশন ফেস্টিভ্যাল');
+  const [promoTitle, setPromoTitle] = useState(initialPromo.title || 'স্টাইলিশ পোশাক, জুতা ও');
+  const [promoHighlightTitle, setPromoHighlightTitle] = useState(initialPromo.highlightTitle || 'লেডিস ব্যাগ স্পেশাল কালেকশন');
+  const [promoDescription, setPromoDescription] = useState(
+    initialPromo.description ||
+      'সেরা মানের প্রিমিয়াম ফেব্রিক ও আকর্ষণীয় ডিজাইনের ট্রেন্ডি পোশাক, স্টাইলিশ জুতা ও ব্র্যান্ডেড লেডিস ব্যাগে আকর্ষণীয় ছাড়!'
+  );
+  const [promoFeature1, setPromoFeature1] = useState(initialPromo.feature1Text || 'সারা দেশে ক্যাশ অন ডেলিভারি');
+  const [promoFeature2, setPromoFeature2] = useState(initialPromo.feature2Text || '১০০% কোয়ালিটি গ্যারান্টি');
+  const [promoCards, setPromoCards] = useState<PromoCard[]>(
+    initialPromo.cards && initialPromo.cards.length > 0 ? initialPromo.cards : DEFAULT_PROMO_BANNER_SETTINGS.cards
+  );
+
+  useEffect(() => {
+    if (settings.promoBanner) {
+      setPromoEnabled(settings.promoBanner.enabled !== false);
+      setPromoBadgeText(settings.promoBanner.badgeText || '');
+      setPromoTitle(settings.promoBanner.title || '');
+      setPromoHighlightTitle(settings.promoBanner.highlightTitle || '');
+      setPromoDescription(settings.promoBanner.description || '');
+      setPromoFeature1(settings.promoBanner.feature1Text || '');
+      setPromoFeature2(settings.promoBanner.feature2Text || '');
+      if (Array.isArray(settings.promoBanner.cards)) {
+        setPromoCards(settings.promoBanner.cards);
+      }
+    }
+  }, [settings.promoBanner]);
+
+  // Promo Card Modal State (Add / Edit)
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [cardTitle, setCardTitle] = useState('');
+  const [cardSubtitle, setCardSubtitle] = useState('');
+  const [cardTagText, setCardTagText] = useState('-৪০%');
+  const [cardTagBg, setCardTagBg] = useState('#e11d48');
+  const [cardImageUrl, setCardImageUrl] = useState('');
+  const [cardLink, setCardLink] = useState('#flash-sale');
+  const [cardImageMode, setCardImageMode] = useState<'upload' | 'url'>('upload');
+  const cardFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenAddCard = () => {
+    setEditingCardId(null);
+    setCardTitle('');
+    setCardSubtitle('');
+    setCardTagText('-৪০%');
+    setCardTagBg('#e11d48');
+    setCardImageUrl('');
+    setCardLink('#flash-sale');
+    setCardImageMode('upload');
+    setIsCardModalOpen(true);
+  };
+
+  const handleOpenEditCard = (card: PromoCard) => {
+    setEditingCardId(card.id);
+    setCardTitle(card.title || '');
+    setCardSubtitle(card.subtitle || '');
+    setCardTagText(card.tagText || '');
+    setCardTagBg(card.tagBg || '#e11d48');
+    setCardImageUrl(card.imageUrl || '');
+    setCardLink(card.link || '#flash-sale');
+    setCardImageMode(card.imageUrl && card.imageUrl.startsWith('data:') ? 'upload' : 'url');
+    setIsCardModalOpen(true);
+  };
+
+  const handleSaveCardModal = () => {
+    if (!cardTitle.trim()) {
+      showToast('অনুগ্রহ করে কার্ডের শিরোনাম লিখুন');
+      return;
+    }
+    if (!cardImageUrl.trim()) {
+      showToast('অনুগ্রহ করে কার্ডের ছবি আপলোড করুন অথবা লিংক দিন');
+      return;
+    }
+
+    let updatedCards: PromoCard[];
+    if (editingCardId) {
+      updatedCards = promoCards.map((c) =>
+        c.id === editingCardId
+          ? {
+              ...c,
+              title: cardTitle.trim(),
+              subtitle: cardSubtitle.trim() || undefined,
+              tagText: cardTagText.trim() || undefined,
+              tagBg: cardTagBg.trim() || '#e11d48',
+              imageUrl: cardImageUrl.trim(),
+              link: cardLink.trim() || '#flash-sale',
+            }
+          : c
+      );
+      showToast('প্রমো কার্ড সফলভাবে আপডেট করা হয়েছে!');
+    } else {
+      const newCard: PromoCard = {
+        id: `promo-card-${Date.now()}`,
+        title: cardTitle.trim(),
+        subtitle: cardSubtitle.trim() || undefined,
+        tagText: cardTagText.trim() || undefined,
+        tagBg: cardTagBg.trim() || '#e11d48',
+        imageUrl: cardImageUrl.trim(),
+        link: cardLink.trim() || '#flash-sale',
+      };
+      updatedCards = [...promoCards, newCard];
+      showToast('নতুন প্রমো কার্ড যোগ করা হয়েছে!');
+    }
+
+    setPromoCards(updatedCards);
+    setIsCardModalOpen(false);
+
+    // Save permanently to settings & database
+    const updatedPromo: PromoBannerSettings = {
+      enabled: promoEnabled,
+      badgeText: promoBadgeText.trim(),
+      title: promoTitle.trim(),
+      highlightTitle: promoHighlightTitle.trim(),
+      description: promoDescription.trim(),
+      feature1Text: promoFeature1.trim(),
+      feature2Text: promoFeature2.trim(),
+      cards: updatedCards,
+    };
+    updateSettings({ promoBanner: updatedPromo });
+  };
+
+  const handleDeleteCard = (cardId: string, cardName: string) => {
+    if (window.confirm(`আপনি কি "${cardName}" কার্ডটি মুছে ফেলতে চান?`)) {
+      const updated = promoCards.filter((c) => c.id !== cardId);
+      setPromoCards(updated);
+      const updatedPromo: PromoBannerSettings = {
+        enabled: promoEnabled,
+        badgeText: promoBadgeText.trim(),
+        title: promoTitle.trim(),
+        highlightTitle: promoHighlightTitle.trim(),
+        description: promoDescription.trim(),
+        feature1Text: promoFeature1.trim(),
+        feature2Text: promoFeature2.trim(),
+        cards: updated,
+      };
+      updateSettings({ promoBanner: updatedPromo });
+      showToast(`"${cardName}" কার্ডটি মুছে ফেলা হয়েছে!`);
+    }
+  };
+
+  const handleMoveCard = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= promoCards.length) return;
+    const updated = [...promoCards];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+    setPromoCards(updated);
+    const updatedPromo: PromoBannerSettings = {
+      enabled: promoEnabled,
+      badgeText: promoBadgeText.trim(),
+      title: promoTitle.trim(),
+      highlightTitle: promoHighlightTitle.trim(),
+      description: promoDescription.trim(),
+      feature1Text: promoFeature1.trim(),
+      feature2Text: promoFeature2.trim(),
+      cards: updated,
+    };
+    updateSettings({ promoBanner: updatedPromo });
+    showToast('কার্ডের ক্রম পরিবর্তন করা হয়েছে!');
+  };
+
+  const handleCardModalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('অনুগ্রহ করে শুধুমাত্র ছবি ফাইল নির্বাচন করুন');
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      showToast('ছবির সাইজ সর্বোচ্চ 6MB হতে পারবে');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setCardImageUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSavePromoBannerSettings = () => {
+    const updatedPromo: PromoBannerSettings = {
+      enabled: promoEnabled,
+      badgeText: promoBadgeText.trim(),
+      title: promoTitle.trim(),
+      highlightTitle: promoHighlightTitle.trim(),
+      description: promoDescription.trim(),
+      feature1Text: promoFeature1.trim(),
+      feature2Text: promoFeature2.trim(),
+      cards: promoCards,
+    };
+    updateSettings({ promoBanner: updatedPromo });
+    triggerSuccessPopup(
+      'প্রমো ব্যানার সেটিংস ডাটাবেসে সেভ হয়েছে!',
+      'হোম পেইজের ফ্যাশন কালেকশন ও প্রমো ব্যানার সফলভাবে সংরক্ষিত হয়েছে।',
+      'ডাটাবেস মাইগ্রেশন সম্পন্ন হওয়ায় ক্যাশ ক্লিয়ার করলেও এটি স্থায়ী থাকবে।'
+    );
+  };
+
+  const handleRestoreDefaultPromoBanner = () => {
+    if (window.confirm('আপনি কি ডিফল্ট ফ্যাশন প্রমো ব্যানার (পোশাক, লেডিস ব্যাগ ও জুতা কালেকশন) রিস্টোর করতে চান?')) {
+      setPromoEnabled(DEFAULT_PROMO_BANNER_SETTINGS.enabled);
+      setPromoBadgeText(DEFAULT_PROMO_BANNER_SETTINGS.badgeText);
+      setPromoTitle(DEFAULT_PROMO_BANNER_SETTINGS.title);
+      setPromoHighlightTitle(DEFAULT_PROMO_BANNER_SETTINGS.highlightTitle || '');
+      setPromoDescription(DEFAULT_PROMO_BANNER_SETTINGS.description);
+      setPromoFeature1(DEFAULT_PROMO_BANNER_SETTINGS.feature1Text || '');
+      setPromoFeature2(DEFAULT_PROMO_BANNER_SETTINGS.feature2Text || '');
+      setPromoCards(DEFAULT_PROMO_BANNER_SETTINGS.cards);
+      updateSettings({ promoBanner: DEFAULT_PROMO_BANNER_SETTINGS });
+      showToast('ডিফল্ট ফ্যাশন প্রমো ব্যানার রিস্টোর করা হয়েছে!');
+      triggerSuccessPopup(
+        'ডিফল্ট প্রমো ব্যানার সক্রিয় হয়েছে',
+        'পোশাক, লেডিস ব্যাগ ও জুতার ৩টি আকর্ষণীয় কার্ড সফলভাবে রিস্টোর হয়েছে।'
+      );
+    }
   };
 
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor || '#fff');
@@ -914,6 +1145,18 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('promo')}
+              className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+                activeTab === 'promo'
+                  ? 'text-[#990000] border-[#990000] font-bold'
+                  : 'text-slate-500 border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Promo Banner (প্রমো ব্যানার)</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('security')}
               className={`flex items-center gap-1.5 py-2.5 border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
                 activeTab === 'security'
@@ -1264,6 +1507,381 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                           <Trash2 className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">ডিলিট</span>
                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB: MIDDLE PROMO BANNER MANAGEMENT (প্রমো ব্যানার ও কালেকশন)   */}
+          {/* ============================================================== */}
+          {activeTab === 'promo' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-[#18080c] via-[#2d0f17] to-[#140609] rounded-2xl p-6 text-white border border-rose-900/40 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.3)] shrink-0">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2 flex-wrap">
+                      <span>মিডল প্রমো ব্যানার ও কালেকশন (Middle Promo Banner)</span>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        promoEnabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }`}>
+                        {promoEnabled ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয় (Disabled)'}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-rose-200/80 mt-1">
+                      হোম পেইজের মাঝের ফ্যাশন কালেকশন অফার ব্যানার, পোশাক-ব্যাগ-জুতার কার্ডসমূহ, অফার ব্যাজ ও বিবরণ নিয়ন্ত্রণ করুন।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Enable Switch */}
+                  <div className="flex items-center gap-2.5 bg-black/40 px-3 py-1.5 rounded-xl border border-rose-900/40">
+                    <span className="text-xs font-semibold text-slate-300">ব্যানার প্রদর্শন</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={promoEnabled}
+                        onChange={(e) => setPromoEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultPromoBanner}
+                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
+                    title="ডিফল্ট পোশাক, ব্যাগ ও জুতার কালেকশন রিস্টোর করুন"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                    <span>ডিফল্ট রিস্টোর</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAddCard}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>নতুন কার্ড যোগ করুন</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSavePromoBannerSettings}
+                    className="px-4 py-2 rounded-xl bg-[#990000] hover:bg-[#800000] text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>পরিবর্তন সেভ করুন</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Preview of Promo Banner */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-amber-600" />
+                    <h3 className="font-bold text-sm text-slate-800">
+                      লাইভ ওয়েবসাইট প্রিভিউ (Live Preview)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    ওয়েবসাইটে ঠিক যেরকম দেখা যাবে
+                  </span>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden bg-gradient-to-r from-[#18080c] via-[#2d0f17] to-[#140609] text-white p-5 border border-rose-900/40 shadow-inner">
+                  <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                    <div className="text-center lg:text-left flex-1">
+                      {promoBadgeText && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-950/80 border border-red-500/40 text-red-300 text-[11px] font-bold mb-2 shadow-xs">
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                          <span>{promoBadgeText}</span>
+                        </div>
+                      )}
+                      <h4 className="text-xl sm:text-2xl font-black text-white leading-tight">
+                        {promoTitle}{' '}
+                        {promoHighlightTitle && (
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-amber-300 to-rose-300">
+                            {promoHighlightTitle}
+                          </span>
+                        )}
+                      </h4>
+                      {promoDescription && (
+                        <p className="mt-1 text-xs text-rose-100/80 leading-relaxed max-w-lg">
+                          {promoDescription}
+                        </p>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center justify-center lg:justify-start gap-2.5 text-[10px] text-slate-200">
+                        {promoFeature1 && (
+                          <span className="inline-flex items-center gap-1 bg-white/10 px-2.5 py-0.5 rounded-md">
+                            <span>🚚</span>
+                            <span>{promoFeature1}</span>
+                          </span>
+                        )}
+                        {promoFeature2 && (
+                          <span className="inline-flex items-center gap-1 bg-white/10 px-2.5 py-0.5 rounded-md">
+                            <span>🛡️</span>
+                            <span>{promoFeature2}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Preview Cards */}
+                    <div className="flex items-center gap-2.5 overflow-x-auto max-w-full pb-1">
+                      {promoCards.map((c) => (
+                        <div
+                          key={c.id}
+                          className="bg-white/10 p-2 rounded-xl border border-white/15 flex flex-col items-center text-center w-28 shrink-0"
+                        >
+                          <div className="relative w-16 h-20 rounded-lg overflow-hidden mb-1.5 bg-slate-800">
+                            <img
+                              src={c.imageUrl}
+                              alt={c.title}
+                              className="w-full h-full object-cover"
+                            />
+                            {c.tagText && (
+                              <span
+                                style={{ backgroundColor: c.tagBg || '#e11d48' }}
+                                className="absolute top-1 right-1 text-white text-[8px] font-bold px-1 rounded"
+                              >
+                                {c.tagText}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-bold text-white line-clamp-1">{c.title}</span>
+                          {c.subtitle && (
+                            <span className="text-[9px] text-rose-200/80 line-clamp-1">{c.subtitle}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Headline & Banner Text Settings */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                  <Type className="w-5 h-5 text-[#990000]" />
+                  <h3 className="font-bold text-sm text-slate-800">
+                    ব্যানার শিরোনাম ও বিবরণ সম্পাদনা (Text & Badges)
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      টপ ব্যাজ টেক্সট (Top Badge Text)
+                    </label>
+                    <input
+                      type="text"
+                      value={promoBadgeText}
+                      onChange={(e) => setPromoBadgeText(e.target.value)}
+                      placeholder="যেমন: এক্সক্লুসিভ ফ্যাশন ফেস্টিভ্যাল"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      মূল শিরোনাম (Main Title)
+                    </label>
+                    <input
+                      type="text"
+                      value={promoTitle}
+                      onChange={(e) => setPromoTitle(e.target.value)}
+                      placeholder="যেমন: স্টাইলিশ পোশাক, জুতা ও"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      হাইলাইট কালার শিরোনাম (Highlight Title)
+                    </label>
+                    <input
+                      type="text"
+                      value={promoHighlightTitle}
+                      onChange={(e) => setPromoHighlightTitle(e.target.value)}
+                      placeholder="যেমন: লেডিস ব্যাগ স্পেশাল কালেকশন"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      ফিচার ১ (Feature 1 Pill)
+                    </label>
+                    <input
+                      type="text"
+                      value={promoFeature1}
+                      onChange={(e) => setPromoFeature1(e.target.value)}
+                      placeholder="যেমন: সারা দেশে ক্যাশ অন ডেলিভারি"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      ফিচার ২ (Feature 2 Pill)
+                    </label>
+                    <input
+                      type="text"
+                      value={promoFeature2}
+                      onChange={(e) => setPromoFeature2(e.target.value)}
+                      placeholder="যেমন: ১০০% কোয়ালিটি গ্যারান্টি"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      বিস্তারিত বিবরণ (Description)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={promoDescription}
+                      onChange={(e) => setPromoDescription(e.target.value)}
+                      placeholder="সেরা মানের প্রিমিয়াম ফেব্রিক ও আকর্ষণীয় ডিজাইনের ট্রেন্ডি পোশাক..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-[#990000]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSavePromoBannerSettings}
+                    className="px-4 py-2 rounded-lg bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>শিরোনাম ও বিবরণ সেভ করুন</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Promo Cards Management List */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-[#990000]" />
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800">
+                        প্রমো কার্ডসমূহ ({promoCards.length}টি কালেকশন কার্ড)
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        কার্ড এডিট, ডিলিট, ছবি পরিবর্তন ও নতুন ফ্যাশন কার্ড যোগ করুন।
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAddCard}
+                    className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ নতুন প্রমো কার্ড</span>
+                  </button>
+                </div>
+
+                {/* Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {promoCards.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      className="rounded-xl border border-slate-200 hover:border-rose-400 p-4 bg-slate-50/50 hover:bg-white transition-all shadow-2xs hover:shadow-md flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Top Thumbnail & Tag */}
+                        <div className="relative rounded-lg overflow-hidden h-36 bg-slate-800 mb-3 group">
+                          <img
+                            src={card.imageUrl}
+                            alt={card.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&auto=format&fit=crop&q=80';
+                            }}
+                          />
+                          {card.tagText && (
+                            <span
+                              style={{ backgroundColor: card.tagBg || '#e11d48' }}
+                              className="absolute top-2 right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm"
+                            >
+                              {card.tagText}
+                            </span>
+                          )}
+                          <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-mono px-2 py-0.5 rounded backdrop-blur-xs">
+                            #{idx + 1}
+                          </span>
+                        </div>
+
+                        {/* Title & Subtitle */}
+                        <h4 className="font-bold text-sm text-slate-900 line-clamp-1">{card.title}</h4>
+                        {card.subtitle && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{card.subtitle}</p>
+                        )}
+                        <p className="text-[11px] text-slate-400 mt-1 font-mono truncate">
+                          লিংক: {card.link}
+                        </p>
+                      </div>
+
+                      {/* Card Action Controls */}
+                      <div className="pt-3 mt-3 border-t border-slate-200/80 flex items-center justify-between gap-1">
+                        {/* Order Buttons */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCard(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            title="বামে / উপরে নিন"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCard(idx, 'down')}
+                            disabled={idx === promoCards.length - 1}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            title="ডানে / নিচে নিন"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Edit & Delete Buttons */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditCard(card)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>এডিট</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCard(card.id, card.title)}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="কার্ড মুছে ফেলুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>ডিলিট</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -3695,6 +4313,253 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
               >
                 <Save className="w-4 h-4" />
                 <span>স্লাইড সংরক্ষণ করুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* PROMO CARD ADD / EDIT MODAL                                    */}
+      {/* ============================================================== */}
+      {isCardModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800">
+                    {editingCardId ? 'প্রমো কার্ড এডিট করুন' : 'নতুন প্রমো কার্ড যোগ করুন'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    পোশাক, ব্যাগ, জুতা বা যেকোনো ফ্যাশন পণ্যের কার্ড কনফিগার করুন
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCardModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  কার্ডের শিরোনাম (Card Title) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cardTitle}
+                  onChange={(e) => setCardTitle(e.target.value)}
+                  placeholder="যেমন: পোশাক-আশাক, লেডিস ব্যাগ, জুতা ও হিল"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-xs font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  সাব-টাইটেল / ক্যাপশন (Subtitle)
+                </label>
+                <input
+                  type="text"
+                  value={cardSubtitle}
+                  onChange={(e) => setCardSubtitle(e.target.value)}
+                  placeholder="যেমন: নতুন ডিজাইন, লেদার ও ক্লাচ, হিল ও স্নিকার্স"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    অফার ব্যাজ টেক্সট (Discount Tag)
+                  </label>
+                  <input
+                    type="text"
+                    value={cardTagText}
+                    onChange={(e) => setCardTagText(e.target.value)}
+                    placeholder="যেমন: -৪০%, হট ডিল, -৫০%"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    ব্যাজ কালার (Tag Color)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={cardTagBg}
+                      onChange={(e) => setCardTagBg(e.target.value)}
+                      className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0"
+                    />
+                    <input
+                      type="text"
+                      value={cardTagBg}
+                      onChange={(e) => setCardTagBg(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tag Color Presets */}
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span>কালার প্রিসেট:</span>
+                {[
+                  { name: 'Red', color: '#e11d48' },
+                  { name: 'Amber', color: '#f59e0b' },
+                  { name: 'Blue', color: '#0284c7' },
+                  { name: 'Green', color: '#16a34a' },
+                  { name: 'Purple', color: '#9333ea' },
+                  { name: 'Dark', color: '#1e293b' },
+                ].map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => setCardTagBg(p.color)}
+                    style={{ backgroundColor: p.color }}
+                    className="w-5 h-5 rounded-full border border-white shadow-2xs hover:scale-110 transition-transform cursor-pointer"
+                    title={p.name}
+                  />
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ক্লিক লিংক / টার্গেট সেকশন (Target Link)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cardLink}
+                    onChange={(e) => setCardLink(e.target.value)}
+                    placeholder="যেমন: #flash-sale, #top-rated, #best-sells"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-xs font-mono"
+                  />
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) setCardLink(e.target.value);
+                    }}
+                    className="px-2 py-2 border border-slate-300 rounded-lg text-xs bg-slate-50 text-slate-700 cursor-pointer"
+                  >
+                    <option value="">দ্রুত লিংক</option>
+                    <option value="#flash-sale">#flash-sale</option>
+                    <option value="#top-rated">#top-rated</option>
+                    <option value="#best-sells">#best-sells</option>
+                    <option value="#all-new">#all-new</option>
+                    <option value="/order">/order</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Image Mode Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700">
+                    কার্ডের ছবি (Card Image) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setCardImageMode('upload')}
+                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                        cardImageMode === 'upload' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
+                      }`}
+                    >
+                      আপলোড
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardImageMode('url')}
+                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                        cardImageMode === 'url' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
+                      }`}
+                    >
+                      ইমেজ লিংক (URL)
+                    </button>
+                  </div>
+                </div>
+
+                {cardImageMode === 'upload' ? (
+                  <div>
+                    <input
+                      ref={cardFileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={handleCardModalFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => cardFileInputRef.current?.click()}
+                      className="w-full py-3 px-4 border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl flex items-center justify-center gap-2 bg-amber-50/30 hover:bg-amber-50/60 text-amber-800 font-bold transition-colors cursor-pointer text-xs"
+                    >
+                      <Upload className="w-4 h-4 text-amber-600" />
+                      <span>কম্পিউটার থেকে ছবি পছন্দ করুন</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="text"
+                      value={cardImageUrl}
+                      onChange={(e) => setCardImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono text-[11px]"
+                    />
+                  </div>
+                )}
+
+                {/* Image Live Preview */}
+                {cardImageUrl && (
+                  <div className="relative rounded-xl overflow-hidden h-36 border border-slate-200 mt-2 bg-slate-900 flex items-center justify-center">
+                    <img
+                      src={cardImageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                    {cardTagText && (
+                      <span
+                        style={{ backgroundColor: cardTagBg }}
+                        className="absolute top-2 right-2 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm"
+                      >
+                        {cardTagText}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCardModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                বাতিল করুন
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCardModal}
+                className="px-5 py-2 rounded-lg bg-[#990000] hover:bg-[#800000] text-white text-xs font-bold transition-colors shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>কার্ড সংরক্ষণ করুন</span>
               </button>
             </div>
           </div>

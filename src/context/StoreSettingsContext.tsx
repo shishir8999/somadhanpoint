@@ -44,7 +44,68 @@ export interface StoreSettings {
   supportReplyMessage?: string;
   supportCallButtonText?: string;
   banners: BannerSlide[];
+  promoBanner?: PromoBannerSettings;
 }
+
+export interface PromoCard {
+  id: string;
+  title: string;
+  subtitle?: string;
+  tagText?: string;
+  tagBg?: string;
+  imageUrl: string;
+  link: string;
+}
+
+export interface PromoBannerSettings {
+  enabled: boolean;
+  badgeText: string;
+  title: string;
+  highlightTitle?: string;
+  description: string;
+  feature1Text?: string;
+  feature2Text?: string;
+  cards: PromoCard[];
+}
+
+export const DEFAULT_PROMO_BANNER_SETTINGS: PromoBannerSettings = {
+  enabled: true,
+  badgeText: 'এক্সক্লুসিভ ফ্যাশন ফেস্টিভ্যাল',
+  title: 'স্টাইলিশ পোশাক, জুতা ও লেডিস ব্যাগ স্পেশাল কালেকশন',
+  highlightTitle: 'লেডিস ব্যাগ স্পেশাল কালেকশন',
+  description: 'সেরা মানের প্রিমিয়াম ফেব্রিক ও আকর্ষণীয় ডিজাইনের ট্রেন্ডি পোশাক, স্টাইলিশ জুতা ও ব্র্যান্ডেড লেডিস ব্যাগে আকর্ষণীয় ছাড়!',
+  feature1Text: 'সারা দেশে ক্যাশ অন ডেলিভারি',
+  feature2Text: '১০০% কোয়ালিটি গ্যারান্টি',
+  cards: [
+    {
+      id: 'promo-card-1',
+      title: 'পোশাক-আশাক',
+      subtitle: 'নতুন ডিজাইন',
+      tagText: '-৪০%',
+      tagBg: '#e11d48',
+      imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&auto=format&fit=crop&q=80',
+      link: '#flash-sale',
+    },
+    {
+      id: 'promo-card-2',
+      title: 'লেডিস ব্যাগ',
+      subtitle: 'লেদার ও ক্লাচ',
+      tagText: 'হট ডিল',
+      tagBg: '#f59e0b',
+      imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&auto=format&fit=crop&q=80',
+      link: '#top-rated',
+    },
+    {
+      id: 'promo-card-3',
+      title: 'জুতা ও হিল',
+      subtitle: 'হিল ও স্নিকার্স',
+      tagText: '-৫০%',
+      tagBg: '#e11d48',
+      imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&auto=format&fit=crop&q=80',
+      link: '#best-sells',
+    },
+  ],
+};
 
 export const FASHION_DEFAULT_BANNERS: BannerSlide[] = [
   {
@@ -132,6 +193,7 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   supportReplyMessage: 'ধন্যবাদ! আমাদের কাস্টমার সাপোর্ট টিম দ্রুত আপনার সাথে যোগাযোগ করবে। সরাসরি ফোনে কথা বলতে ডায়াল করুন 01982708789',
   supportCallButtonText: 'কল করুন',
   banners: FASHION_DEFAULT_BANNERS,
+  promoBanner: DEFAULT_PROMO_BANNER_SETTINGS,
 };
 
 interface StoreSettingsContextType {

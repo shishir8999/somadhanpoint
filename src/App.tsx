@@ -180,6 +180,7 @@ export default function App() {
     | 'admin_custom_pages'
     | 'admin_settings'
     | 'admin_slider_settings'
+    | 'admin_promo_settings'
   >('home');
 
   // Initial tab for OrderCheckoutPage ('checkout' | 'tracking')
@@ -711,6 +712,9 @@ export default function App() {
       case 'slider_settings':
         setCurrentView('admin_slider_settings');
         break;
+      case 'promo_settings':
+        setCurrentView('admin_promo_settings');
+        break;
       case 'custom_pages':
         setCurrentView('admin_custom_pages');
         break;
@@ -793,6 +797,17 @@ export default function App() {
     return (
       <SettingsAdminPage
         initialTab="slider"
+        onNavigate={handleAdminNavigate}
+        onBackToStore={() => setCurrentView('home')}
+      />
+    );
+  }
+
+  // Super Admin: Promo Banner Settings Page
+  if (currentView === 'admin_promo_settings') {
+    return (
+      <SettingsAdminPage
+        initialTab="promo"
         onNavigate={handleAdminNavigate}
         onBackToStore={() => setCurrentView('home')}
       />

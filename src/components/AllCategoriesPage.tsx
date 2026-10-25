@@ -14,7 +14,8 @@ import {
   PlusCircle,
   AlertTriangle,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RefreshCw
 } from 'lucide-react';
 import { ProductVisual } from './ProductVisual';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
@@ -72,6 +73,18 @@ export const INITIAL_CATEGORIES_WITH_SUBS: CategoryRow[] = [
       { id: 'sub-2-2', name: 'Oxford Formal Shoe (অক্সফোর্ড সু)' },
       { id: 'sub-2-3', name: 'Loafer Shoe (লোফার সু)' },
       { id: 'sub-2-4', name: 'Pure Leather Sandal (লেদার স্যান্ডেল)' },
+    ],
+  },
+  {
+    id: 'cat-ladies-bag',
+    name: 'Ladies Bag & Purse',
+    visualType: 'cat_leather',
+    subcategoriesCount: 3,
+    createdDate: 'July 15, 2026',
+    subcategories: [
+      { id: 'sub-bag-1', name: 'Leather Handbag (লেদার হ্যান্ডব্যাগ)' },
+      { id: 'sub-bag-2', name: 'Party Clutch & Purse (পার্টি ক্লাচ ও পার্স)' },
+      { id: 'sub-bag-3', name: 'Crossbody Shoulder Bag (ক্রসবডি শোল্ডার ব্যাগ)' },
     ],
   },
   {
@@ -364,6 +377,27 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
     });
   };
 
+  const handleResetToFashionCategories = async () => {
+    if (
+      window.confirm(
+        'আপনি কি সকল ক্যাটাগরি ফ্যাশন ও পোশাক ক্যাটাগরিতে (Woman Khimar, Formal Shoe, Borka, Shirt, Bag ইত্যাদি) রিস্টোর করতে চান? এটি পুরানো ক্যাটাগরি ডাটাবেজ থেকে মুছে নতুন তালিকা সেট করবে।'
+      )
+    ) {
+      setCategoriesList(INITIAL_CATEGORIES_WITH_SUBS);
+      try {
+        localStorage.setItem('ummah_admin_categories_list', JSON.stringify(INITIAL_CATEGORIES_WITH_SUBS));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('categories-updated'));
+      } catch {}
+      await saveCategoriesToDatabase(INITIAL_CATEGORIES_WITH_SUBS);
+      showToast('ফ্যাশন ক্যাটাগরি তালিকা সফলভাবে ডাটাবেসে রিস্টোর ও সেভ হয়েছে!');
+      triggerGlobalSuccessModal({
+        title: 'ফ্যাশন ক্যাটাগরি রিস্টোর হয়েছে!',
+        message: 'সকল পোশাক, জুতা ও লেডিস ব্যাগ ক্যাটাগরি সফলভাবে ডাটাবেসে সেভ করা হয়েছে।',
+      });
+    }
+  };
+
   // 4. Sub-category Direct Management Handlers
   const handleAddSubcategoryToCurrent = (catId: string, subName: string) => {
     if (!subName.trim()) return;
@@ -464,6 +498,16 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
                 className="text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#990000] w-48 sm:w-64"
               />
             </div>
+
+            {/* Reset to Fashion Categories Button */}
+            <button
+              onClick={handleResetToFashionCategories}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-300 shadow-2xs"
+              title="ডিফল্ট পোশাক, জুতা ও ব্যাগের ক্যাটাগরি ডাটাবেজে রিস্টোর করুন"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden sm:inline">ফ্যাশন ক্যাটাগরি রিস্টোর</span>
+            </button>
 
             {/* Red + Add Category Button */}
             <button
