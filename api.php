@@ -297,6 +297,7 @@ try {
                         'youtube' => $row['youtube'] ?: 'https://www.youtube.com',
                         'tiktok' => $row['tiktok'] ?: 'https://www.tiktok.com',
                         'fbPixelId' => $row['fb_pixel_id'],
+                        'fbPixelCustomCode' => $row['fb_pixel_custom_code'] ?? '',
                         'fbApiToken' => $row['fb_api_token'],
                         'logoUrl' => $row['logo_url'] ?: '/somadhan-logo.svg',
                         'footerLogoUrl' => $row['footer_logo_url'] ?: '/somadhan-logo.svg',
@@ -322,6 +323,14 @@ try {
                 $pdo->prepare("INSERT INTO store_settings (id, site_name, created_at, updated_at) VALUES (1, 'Somadhan Point', NOW(), NOW())")->execute();
             }
 
+            // Ensure fb_pixel_custom_code column exists in database
+            try {
+                $hasCol = $pdo->query("SHOW COLUMNS FROM store_settings LIKE 'fb_pixel_custom_code'")->fetch();
+                if (!$hasCol) {
+                    $pdo->exec("ALTER TABLE store_settings ADD COLUMN fb_pixel_custom_code LONGTEXT NULL AFTER fb_pixel_id");
+                }
+            } catch (\Throwable $e) {}
+
             $stmt = $pdo->prepare("
                 UPDATE store_settings SET
                     site_name = :site_name,
@@ -345,6 +354,7 @@ try {
                     youtube = :youtube,
                     tiktok = :tiktok,
                     fb_pixel_id = :fb_pixel_id,
+                    fb_pixel_custom_code = :fb_pixel_custom_code,
                     fb_api_token = :fb_api_token,
                     logo_url = :logo_url,
                     footer_logo_url = :footer_logo_url,
@@ -378,6 +388,7 @@ try {
                 ':youtube' => $data['youtube'] ?? 'https://www.youtube.com',
                 ':tiktok' => $data['tiktok'] ?? 'https://www.tiktok.com',
                 ':fb_pixel_id' => $data['fbPixelId'] ?? null,
+                ':fb_pixel_custom_code' => $data['fbPixelCustomCode'] ?? ($data['pixelCustomCode'] ?? null),
                 ':fb_api_token' => $data['fbApiToken'] ?? null,
                 ':logo_url' => $data['logoUrl'] ?? '/somadhan-logo.svg',
                 ':footer_logo_url' => $data['footerLogoUrl'] ?? '/somadhan-logo.svg',
