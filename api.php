@@ -137,6 +137,60 @@ try {
     }
 } catch (Exception $e) {}
 
+// 2.3 Ensure orders and order_items tables & columns exist
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+        id VARCHAR(64) PRIMARY KEY,
+        order_number VARCHAR(64) NOT NULL,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_phone VARCHAR(64) NOT NULL,
+        customer_address TEXT,
+        payment_method VARCHAR(50) DEFAULT 'cod',
+        delivery_area VARCHAR(50) DEFAULT 'inside_dhaka',
+        subtotal DECIMAL(12,2) DEFAULT 0,
+        delivery_charge DECIMAL(12,2) DEFAULT 60,
+        discount DECIMAL(12,2) DEFAULT 0,
+        total DECIMAL(12,2) DEFAULT 0,
+        status VARCHAR(50) DEFAULT 'Pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $ordCols = $pdo->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+    $neededCols = [
+        'order_number' => 'VARCHAR(64) NOT NULL',
+        'customer_name' => 'VARCHAR(255) NOT NULL',
+        'customer_phone' => 'VARCHAR(64) NOT NULL',
+        'customer_address' => 'TEXT',
+        'payment_method' => "VARCHAR(50) DEFAULT 'cod'",
+        'delivery_area' => "VARCHAR(50) DEFAULT 'inside_dhaka'",
+        'subtotal' => 'DECIMAL(12,2) DEFAULT 0',
+        'delivery_charge' => 'DECIMAL(12,2) DEFAULT 60',
+        'discount' => 'DECIMAL(12,2) DEFAULT 0',
+        'total' => 'DECIMAL(12,2) DEFAULT 0',
+        'status' => "VARCHAR(50) DEFAULT 'Pending'",
+    ];
+    foreach ($neededCols as $col => $definition) {
+        if (!in_array($col, $ordCols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN {$col} {$definition}");
+        }
+    }
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS order_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id VARCHAR(64) NOT NULL,
+        product_id VARCHAR(64),
+        product_name VARCHAR(255),
+        quantity INT DEFAULT 1,
+        unit_price DECIMAL(12,2) DEFAULT 0,
+        selected_color VARCHAR(100) DEFAULT NULL,
+        selected_size VARCHAR(100) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX (order_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Exception $e) {}
+
 // Standard RFC 6238 TOTP Validator (Google Authenticator Compatible)
 function verify_rfc6238_totp($secret, $inputCode, $discrepancy = 1) {
     if (empty($secret) || empty($inputCode)) return false;
