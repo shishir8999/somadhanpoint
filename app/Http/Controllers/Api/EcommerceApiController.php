@@ -139,6 +139,7 @@ class EcommerceApiController extends Controller
                         'tiktok' => $row->tiktok ?: 'https://www.tiktok.com',
                         'fbPixelId' => $row->fb_pixel_id,
                         'fbApiToken' => $row->fb_api_token,
+                        'fbPixelCustomCode' => $row->fb_pixel_custom_code ?? '',
                         'logoUrl' => $row->logo_url ?: '/somadhan-logo.svg',
                         'footerLogoUrl' => $row->footer_logo_url ?: '/somadhan-logo.svg',
                         'footerLogoBg' => $row->footer_logo_bg ?: 'white_card',
@@ -193,8 +194,17 @@ class EcommerceApiController extends Controller
                 $setting->instagram = $data['instagram'] ?? 'https://www.instagram.com';
                 $setting->youtube = $data['youtube'] ?? 'https://www.youtube.com';
                 $setting->tiktok = $data['tiktok'] ?? 'https://www.tiktok.com';
+                // Ensure fb_pixel_custom_code column exists
+                try {
+                    $hasPixelCol = DB::select("SHOW COLUMNS FROM store_settings LIKE 'fb_pixel_custom_code'");
+                    if (empty($hasPixelCol)) {
+                        DB::statement("ALTER TABLE store_settings ADD COLUMN fb_pixel_custom_code LONGTEXT NULL AFTER fb_pixel_id");
+                    }
+                } catch (\Throwable $te) {}
+
                 $setting->fb_pixel_id = $data['fbPixelId'] ?? null;
                 $setting->fb_api_token = $data['fbApiToken'] ?? null;
+                $setting->fb_pixel_custom_code = $data['fbPixelCustomCode'] ?? ($data['pixelCustomCode'] ?? null);
                 $setting->logo_url = $data['logoUrl'] ?? null;
                 $setting->footer_logo_url = $data['footerLogoUrl'] ?? null;
                 $setting->footer_logo_bg = $data['footerLogoBg'] ?? 'white_card';
