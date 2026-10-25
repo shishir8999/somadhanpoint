@@ -208,7 +208,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     setIsMobileOpen(false);
   };
 
-  const currentLogo = settings.logoUrl || '/somadhan-logo.svg';
+  const currentLogo =
+    settings.logoUrl && !settings.logoUrl.includes('somadhan-logo.svg')
+      ? settings.logoUrl
+      : '/somadhan-logo-white.svg';
 
   // Navigation Items Renderer
   const renderNavItems = (isMobile: boolean) => {
@@ -669,7 +672,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 alt="Somadhan Point"
                 className="h-8 max-w-[155px] object-contain drop-shadow-sm"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/somadhan-logo.svg';
+                  (e.currentTarget as HTMLImageElement).src = '/somadhan-logo-white.svg';
                 }}
               />
             </div>
@@ -757,7 +760,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               alt="Somadhan Point"
               className="h-8 max-w-[145px] object-contain drop-shadow-sm"
               onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = '/somadhan-logo.svg';
+                (e.currentTarget as HTMLImageElement).src = '/somadhan-logo-white.svg';
               }}
             />
           </div>

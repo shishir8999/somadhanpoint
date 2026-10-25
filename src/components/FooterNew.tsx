@@ -85,7 +85,7 @@ export const FooterNew: React.FC<FooterNewProps> = ({
           <div className="space-y-4">
             {/* Brand Logo & Name */}
             <div className="flex items-center gap-3">
-              {(settings.footerLogoUrl || settings.logoUrl) ? (
+              {(settings.logoUrl || settings.footerLogoUrl) ? (
                 <>
                   <div
                     onClick={onOpenHome}
@@ -97,7 +97,7 @@ export const FooterNew: React.FC<FooterNewProps> = ({
                     title={settings.siteName}
                   >
                     <img
-                      src={settings.footerLogoUrl || settings.logoUrl}
+                      src={settings.logoUrl || settings.footerLogoUrl || '/somadhan-logo.svg'}
                       alt={settings.siteName}
                       className={`h-11 sm:h-12 w-auto max-w-[210px] object-contain ${
                         settings.footerLogoBg === 'transparent'
