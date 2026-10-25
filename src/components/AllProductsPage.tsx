@@ -99,13 +99,13 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       try {
         const saved = localStorage.getItem('ummah_admin_products_list');
         if (saved !== null) {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch (e) {
         console.error('Failed to load products from localStorage', e);
       }
     }
-    return [];
     return [
     {
       id: 'prod-1',

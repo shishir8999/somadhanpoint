@@ -621,19 +621,52 @@ export default function App() {
   };
 
   const handleFilterSection = (sectionKey: string) => {
+    // 1. All Products -> Open catalog view
+    if (sectionKey === 'all') {
+      setSelectedCategory('all');
+      setCatalogSearchQuery('');
+      setCurrentView('products');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Free Delivery -> Open catalog filtered with free delivery
+    if (sectionKey === 'free-delivery' || sectionKey === 'free_delivery') {
+      setSelectedCategory('all');
+      setCatalogSearchQuery('ডেলিভারি ফ্রি');
+      setCurrentView('products');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 3. Homepage sections (top-rated, flash-sale, brands, categories, etc.)
     if (currentView !== 'home') {
       setCurrentView('home');
     }
+
+    const normalizedKey = sectionKey.replace(/_/g, '-');
+
     setTimeout(() => {
-      if (sectionKey === 'all') {
-        window.scrollTo({ top: 400, behavior: 'smooth' });
-      } else {
-        const el = document.getElementById(sectionKey);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
+      let targetEl = document.getElementById(normalizedKey);
+
+      if (!targetEl) {
+        if (normalizedKey === 'top-rated' || normalizedKey === 'toprated') {
+          targetEl = document.getElementById('top-rated') || document.getElementById('best-sells');
+        } else if (normalizedKey === 'flash-sale' || normalizedKey === 'flashsale' || normalizedKey === 'new') {
+          targetEl = document.getElementById('flash-sale') || document.getElementById('hot-deals');
+        } else if (normalizedKey === 'brands' || normalizedKey === 'our-brands') {
+          targetEl = document.getElementById('brands');
+        } else if (normalizedKey === 'categories') {
+          targetEl = document.getElementById('categories');
         }
       }
-    }, 100);
+
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 350, behavior: 'smooth' });
+      }
+    }, 120);
   };
 
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -1222,6 +1255,13 @@ export default function App() {
         }}
         onFilterSection={handleFilterSection}
         onContactClick={() => {
+          if (currentView === 'home') {
+            const el = document.getElementById('contact');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              return;
+            }
+          }
           setCurrentView('contact_us');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}

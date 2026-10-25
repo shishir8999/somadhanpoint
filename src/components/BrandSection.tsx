@@ -77,7 +77,7 @@ export const BrandSection: React.FC<BrandSectionProps> = ({ onSelectBrand }) => 
   }
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <section id="brands" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="text-center mb-5">
         <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
           আমাদের ব্র্যান্ড

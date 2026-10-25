@@ -68,6 +68,39 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
     return CIRCULAR_CATEGORIES;
   });
 
+  // Fetch live categories from database on mount
+  React.useEffect(() => {
+    import('../utils/apiSync').then(({ fetchCategoriesFromDatabase }) => {
+      fetchCategoriesFromDatabase().then((dbCats) => {
+        if (dbCats && Array.isArray(dbCats) && dbCats.length > 0) {
+          setCategories(dbCats);
+        }
+      });
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCategories(parsed);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('categories-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('categories-updated', handleStorage);
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   return (

@@ -29,7 +29,7 @@ export const FooterNew: React.FC<FooterNewProps> = ({
   const { settings } = useStoreSettings();
 
   return (
-    <footer className="w-full bg-[#111827] text-slate-300 pt-10 pb-20 md:pb-6 border-t border-slate-800">
+    <footer id="contact" className="w-full bg-[#111827] text-slate-300 pt-10 pb-20 md:pb-6 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top 3 Contact Cards Strip */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-8 border-b border-slate-800">

@@ -95,15 +95,26 @@ export const ProductsCatalogPage: React.FC<ProductsCatalogPageProps> = ({
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
+      const isFreeDeliveryQuery =
+        q === 'ডেলিভারি ফ্রি' ||
+        q === 'ফ্রি ডেলিভারি' ||
+        q === 'free_delivery' ||
+        q === 'free delivery' ||
+        q === 'free';
+
+      result = result.filter((p) => {
+        if (isFreeDeliveryQuery && (p.badgeType === 'free_delivery' || (p.badge && p.badge.includes('ফ্রি')))) {
+          return true;
+        }
+        return (
           p.name.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
           (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
           (p.brand && p.brand.toLowerCase().includes(q)) ||
           (p.badge && p.badge.toLowerCase().includes(q)) ||
           (p.description && p.description.toLowerCase().includes(q))
-      );
+        );
+      });
     }
 
     // Sorting

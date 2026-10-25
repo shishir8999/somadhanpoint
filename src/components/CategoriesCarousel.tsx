@@ -102,7 +102,7 @@ export const CategoriesCarousel: React.FC<CategoriesCarouselProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2.5 sm:py-4 relative">
+    <div id="categories" className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2.5 sm:py-4 relative">
       <div className="relative flex items-center">
         {/* Left Arrow Button (Desktop only, touch swipe on mobile) */}
         <button
