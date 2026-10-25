@@ -13,12 +13,12 @@ export const HeroSlider: React.FC = () => {
       ? settings.banners
       : FASHION_DEFAULT_BANNERS;
 
-  // Auto-slide effect with pause-on-hover
+  // Auto-slide effect with pause-on-hover (6 seconds for smooth slow motion)
   useEffect(() => {
     if (banners.length <= 1 || isHovered) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(interval);
   }, [banners.length, isHovered]);
 
@@ -92,25 +92,31 @@ export const HeroSlider: React.FC = () => {
             <div
               key={b.id || idx}
               onClick={() => handleSlideClick(b)}
-              className={`absolute inset-0 cursor-pointer transition-all duration-700 ease-in-out ${
+              className={`absolute inset-0 cursor-pointer transition-opacity duration-1500 sm:duration-2000 ease-in-out ${
                 isActive
-                  ? 'opacity-100 scale-100 z-10'
-                  : 'opacity-0 scale-105 z-0 pointer-events-none'
+                  ? 'opacity-100 z-10 pointer-events-auto'
+                  : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
-              {/* Background Fashion Photo */}
+              {/* Background Fashion Photo with Cinematic Slow Motion Zoom */}
               <img
                 src={b.imageUrl}
                 alt={b.title || 'Fashion Banner'}
-                className="w-full h-full object-cover object-center transform transition-transform duration-1000 ease-out group-hover:scale-102"
+                className={`w-full h-full object-cover object-center transform transition-transform duration-[6000ms] ease-out ${
+                  isActive ? 'scale-100' : 'scale-110'
+                }`}
                 loading={idx === 0 ? 'eager' : 'lazy'}
               />
 
               {/* Rich Fashion Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent sm:from-black/80 sm:via-black/35 sm:to-black/10" />
 
-              {/* Content Overlay */}
-              <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-10 md:px-14 py-4 max-w-xl md:max-w-2xl text-white">
+              {/* Content Overlay with gentle slow-motion entrance */}
+              <div
+                className={`absolute inset-0 flex flex-col justify-center px-4 sm:px-10 md:px-14 py-4 max-w-xl md:max-w-2xl text-white transition-all duration-1000 ease-out delay-150 ${
+                  isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                }`}
+              >
                 {/* Fashion Pill Badge */}
                 <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-red-600/90 text-white text-[10px] sm:text-xs font-bold tracking-wide uppercase shadow-sm w-fit mb-2 sm:mb-3 backdrop-blur-xs">
                   <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
@@ -142,13 +148,6 @@ export const HeroSlider: React.FC = () => {
           );
         })}
 
-        {/* Slide Counter Badge */}
-        {banners.length > 1 && (
-          <div className="absolute top-3 right-3 sm:top-4 sm:right-5 z-20 bg-black/50 backdrop-blur-md text-white text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full border border-white/20">
-            {String(currentSlide + 1).padStart(2, '0')} / {String(banners.length).padStart(2, '0')}
-          </div>
-        )}
-
         {/* Navigation Arrows */}
         {banners.length > 1 && (
           <>
@@ -169,7 +168,7 @@ export const HeroSlider: React.FC = () => {
               <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
-            {/* Indicator Dots */}
+            {/* Indicator Dots with smooth transition */}
             <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/45 backdrop-blur-md px-3 py-1 sm:py-1.5 rounded-full border border-white/15">
               {banners.map((_, idx) => (
                 <button
@@ -179,7 +178,7 @@ export const HeroSlider: React.FC = () => {
                     e.stopPropagation();
                     setCurrentSlide(idx);
                   }}
-                  className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  className={`h-1.5 sm:h-2 rounded-full transition-all duration-700 ease-in-out cursor-pointer ${
                     currentSlide === idx
                       ? 'w-6 sm:w-8 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
                       : 'w-1.5 sm:w-2 bg-white/60 hover:bg-white'
