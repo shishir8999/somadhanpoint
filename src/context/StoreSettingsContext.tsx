@@ -33,6 +33,7 @@ export interface StoreSettings {
   tiktok: string;
   fbPixelId?: string;
   fbApiToken?: string;
+  fbPixelCustomCode?: string;
   logoUrl?: string;
   footerLogoUrl?: string;
   footerLogoBg?: 'white_card' | 'transparent';
@@ -182,6 +183,7 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   tiktok: 'https://www.tiktok.com',
   fbPixelId: '',
   fbApiToken: '',
+  fbPixelCustomCode: '',
   logoUrl: '/somadhan-logo.svg',
   footerLogoUrl: '/somadhan-logo.svg',
   footerLogoBg: 'white_card',
@@ -280,6 +282,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
             const pixelParsed = JSON.parse(pixelSaved);
             if (pixelParsed.fbPixelId && !parsed.fbPixelId) parsed.fbPixelId = pixelParsed.fbPixelId;
             if (pixelParsed.fbApiToken && !parsed.fbApiToken) parsed.fbApiToken = pixelParsed.fbApiToken;
+            if (pixelParsed.fbPixelCustomCode && !parsed.fbPixelCustomCode) parsed.fbPixelCustomCode = pixelParsed.fbPixelCustomCode;
           } catch {}
         }
         if (!parsed.logoUrl || parsed.logoUrl === '' || parsed.logoUrl.includes('placeholder')) {
@@ -309,6 +312,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           ...DEFAULT_STORE_SETTINGS,
           fbPixelId: pixelParsed.fbPixelId || '',
           fbApiToken: pixelParsed.fbApiToken || '',
+          fbPixelCustomCode: pixelParsed.fbPixelCustomCode || '',
         };
       } catch {}
     }

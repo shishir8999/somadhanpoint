@@ -57,7 +57,9 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  ShoppingBag
+  ShoppingBag,
+  Code,
+  Hash
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 import {
@@ -74,6 +76,7 @@ import {
   getPixelLogs,
   onPixelLogUpdate,
   PixelEventLog,
+  extractPixelIdFromCode,
 } from '../utils/pixel';
 import { getOrderSettings, saveOrderSettings, OrderSettings } from '../utils/orderSettings';
 import { SuccessSaveModal } from './SuccessSaveModal';
@@ -914,6 +917,19 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     return settings.fbPixelId || '';
   });
 
+  const [fbPixelCustomCode, setFbPixelCustomCode] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('ecom_pixel_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.fbPixelCustomCode) return parsed.fbPixelCustomCode;
+      }
+    } catch {}
+    return settings.fbPixelCustomCode || '';
+  });
+
+  const [pixelSetupTab, setPixelSetupTab] = useState<'both' | 'code' | 'id'>('both');
+
   const [fbApiToken, setFbApiToken] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('ecom_pixel_settings');
@@ -947,6 +963,19 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     return '';
   });
 
+  // Sync state if settings update from database
+  React.useEffect(() => {
+    if (settings.fbPixelCustomCode && !fbPixelCustomCode) {
+      setFbPixelCustomCode(settings.fbPixelCustomCode);
+    }
+    if (settings.fbPixelId && !fbPixelId) {
+      setFbPixelId(settings.fbPixelId);
+    }
+    if (settings.fbApiToken && !fbApiToken) {
+      setFbApiToken(settings.fbApiToken);
+    }
+  }, [settings.fbPixelCustomCode, settings.fbPixelId, settings.fbApiToken]);
+
   const [pixelLogs, setPixelLogs] = useState<PixelEventLog[]>(getPixelLogs);
 
   React.useEffect(() => {
@@ -954,8 +983,46 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
     return unsub;
   }, []);
 
+  const handleExtractIdFromCode = () => {
+    if (!fbPixelCustomCode.trim()) {
+      showToast('অনুগ্রহ করে প্রথমে কোড বক্সে ফেসবুক পিক্সেল কোড পেস্ট করুন!');
+      return;
+    }
+    const extracted = extractPixelIdFromCode(fbPixelCustomCode);
+    if (extracted) {
+      setFbPixelId(extracted);
+      showToast(`পিক্সেল আইডি সনাক্ত ও সেট করা হয়েছে: ${extracted}`);
+    } else {
+      showToast('কোড থেকে কোনো ১৫ বা ১৬ ডিজিটের পিক্সেল আইডি পাওয়া যায়নি।');
+    }
+  };
+
+  const handleInsertSampleCode = () => {
+    const idToUse = fbPixelId.trim() || '1234567890123456';
+    const sample = `<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${idToUse}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=${idToUse}&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->`;
+    setFbPixelCustomCode(sample);
+    showToast('নমুনা মেটা পিক্সেল কোড যুক্ত করা হয়েছে!');
+  };
+
   const handleSavePixels = () => {
     const cleanFbPixelId = fbPixelId.trim();
+    const cleanFbPixelCustomCode = fbPixelCustomCode.trim();
     const cleanFbApiToken = fbApiToken.trim();
     const cleanTiktokPixelId = tiktokPixelId.trim();
     const cleanTiktokApiToken = tiktokApiToken.trim();
@@ -964,6 +1031,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
       'ecom_pixel_settings',
       JSON.stringify({
         fbPixelId: cleanFbPixelId,
+        fbPixelCustomCode: cleanFbPixelCustomCode,
         fbApiToken: cleanFbApiToken,
         tiktokPixelId: cleanTiktokPixelId,
         tiktokApiToken: cleanTiktokApiToken,
@@ -972,27 +1040,28 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
 
     updateSettings({
       fbPixelId: cleanFbPixelId,
+      fbPixelCustomCode: cleanFbPixelCustomCode,
       fbApiToken: cleanFbApiToken,
     });
 
-    if (cleanFbPixelId) {
-      initFacebookPixel(cleanFbPixelId);
+    if (cleanFbPixelId || cleanFbPixelCustomCode) {
+      initFacebookPixel(cleanFbPixelId, cleanFbPixelCustomCode);
       trackFacebookEvent('PageView', {
         page_name: 'Admin Pixel Settings',
         source: 'Pixel Setup Saved',
       });
     }
 
-    showToast('Facebook Pixel সফলভাবে সক্রিয় ও সংরক্ষিত হয়েছে! পুরো ওয়েবসাইটে ট্র্যাকিং চালু আছে।');
+    showToast('Facebook Pixel কোড ও আইডি ডাটাবেজে স্থায়ীভাবে সেভ হয়েছে!');
     triggerSuccessPopup(
       'পিক্সেল সেটিংস সেভ হয়েছে!',
-      'Facebook ও TikTok Pixel সফলভাবে সংরক্ষণ এবং কার্যকর করা হয়েছে।'
+      'Facebook Pixel কোড এবং আইডি ডাটাবেজে সফলভাবে সংরক্ষণ এবং সক্রিয় করা হয়েছে।'
     );
   };
 
   const handleTriggerTestEvent = (eventName: string) => {
-    if (!fbPixelId.trim()) {
-      showToast('অনুগ্রহ করে প্রথমে আপনার Facebook Pixel ID লিখে Save করুন!');
+    if (!fbPixelId.trim() && !fbPixelCustomCode.trim()) {
+      showToast('অনুগ্রহ করে প্রথমে Facebook Pixel কোড অথবা আইডি লিখে Save করুন!');
       return;
     }
 
@@ -2750,7 +2819,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
 
                   {/* Real-time Status Badge */}
                   <div className="flex items-center gap-2">
-                    {fbPixelId.trim() ? (
+                    {fbPixelId.trim() || fbPixelCustomCode.trim() ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span>সক্রিয় (Active Tracking)</span>
@@ -2758,7 +2827,7 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span>পিক্সেল আইডি সেট করুন</span>
+                        <span>পিক্সেল কোড / আইডি সেট করুন</span>
                       </span>
                     )}
                   </div>
@@ -2806,49 +2875,154 @@ export const SettingsAdminPage: React.FC<SettingsAdminPageProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Pixel ID */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Facebook Pixel ID <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="w-4 h-4 rounded-full bg-[#1877f2] text-white text-[9px] font-bold flex items-center justify-center absolute left-3 top-2.5">
-                        f
-                      </div>
-                      <input
-                        type="text"
-                        value={fbPixelId}
-                        onChange={(e) => setFbPixelId(e.target.value)}
-                        placeholder="e.g. 1234567890123456"
-                        className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono font-medium text-slate-800"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Meta Events Manager থেকে পাওয়া ১৫ বা ১৬ ডিজিটের পিক্সেল আইডি দিন।
-                    </p>
-                  </div>
-
-                  {/* Conversion API Access Token */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Conversion API Access Token (Optional)
-                    </label>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        value={fbApiToken}
-                        onChange={(e) => setFbApiToken(e.target.value)}
-                        placeholder="e.g. EAAG..."
-                        className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono truncate"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      সার্ভার-সাইড ট্র্যাকিং ও AdBlocker বাইপাসের জন্য Access Token।
-                    </p>
-                  </div>
+                {/* Pixel Setup Mode Toggle: Code System vs ID System vs Both */}
+                <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setPixelSetupTab('both')}
+                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      pixelSetupTab === 'both'
+                        ? 'bg-white text-[#990000] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>উভয় সিস্টেম (Code & ID Both)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPixelSetupTab('code')}
+                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      pixelSetupTab === 'code'
+                        ? 'bg-white text-[#990000] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Code className="w-3.5 h-3.5 text-[#1877f2]" />
+                    <span>১. পিক্সেল কোড সিস্টেম</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPixelSetupTab('id')}
+                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      pixelSetupTab === 'id'
+                        ? 'bg-white text-[#990000] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Hash className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>২. পিক্সেল আইডি সিস্টেম</span>
+                  </button>
                 </div>
+
+                {/* 1. CODE SYSTEM SECTION */}
+                {(pixelSetupTab === 'code' || pixelSetupTab === 'both') && (
+                  <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-[#1877f2]" />
+                        <span>ফেসবুক পিক্সেল কোড / বেস স্ক্রিপ্ট (Full Base Code / Custom Script)</span>
+                        <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                          কোড পেস্ট অপশন
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={handleExtractIdFromCode}
+                          className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded border border-emerald-200 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="কোড থেকে স্বয়ংক্রিয়ভাবে পিক্সেল আইডি ডিটেক্ট করুন"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>আইডি এক্সট্রাক্ট করুন</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleInsertSampleCode}
+                          className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded border border-blue-200 transition-colors cursor-pointer"
+                        >
+                          নমুনা কোড
+                        </button>
+                        {fbPixelCustomCode && (
+                          <button
+                            type="button"
+                            onClick={() => setFbPixelCustomCode('')}
+                            className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded border border-rose-200 transition-colors cursor-pointer"
+                          >
+                            মুছুন
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-300 focus-within:border-[#990000] focus-within:ring-1 focus-within:ring-[#990000] overflow-hidden bg-slate-900 shadow-inner">
+                      <div className="bg-slate-800 px-3 py-1.5 border-b border-slate-700 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                        <span>&lt;!-- Facebook (Meta) Pixel Base Code Snippet --&gt;</span>
+                        <span className="text-[10px] text-slate-400">
+                          {fbPixelCustomCode.length} characters
+                        </span>
+                      </div>
+                      <textarea
+                        rows={7}
+                        value={fbPixelCustomCode}
+                        onChange={(e) => setFbPixelCustomCode(e.target.value)}
+                        placeholder={`<!-- Meta Pixel Code -->\n<script>\n!function(f,b,e,v,n,t,s)\n{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};\nif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\nn.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];\ns.parentNode.insertBefore(t,s)}(window, document,'script',\n'https://connect.facebook.net/en_US/fbevents.js');\nfbq('init', '1234567890123456');\nfbq('track', 'PageView');\n</script>\n<noscript><img height="1" width="1" style="display:none"\nsrc="https://www.facebook.com/tr?id=1234567890123456&ev=PageView&noscript=1"\n/></noscript>\n<!-- End Meta Pixel Code -->`}
+                        className="w-full p-3 font-mono text-xs bg-slate-900 text-emerald-400 placeholder:text-slate-600 focus:outline-none leading-relaxed resize-y"
+                        spellCheck={false}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Meta Events Manager থেকে কপি করা সম্পূর্ণ বেস কোড বা কাস্টম জাভাস্ক্রিপ্ট স্ক্রিপ্ট এখানে পেস্ট করে সেভ করুন। এটি ডাটাবেজে স্থায়ীভাবে সেভ থাকবে এবং পুরো ওয়েবসাইটে স্বয়ংক্রিয়ভাবে কার্যকর হবে।
+                    </p>
+                  </div>
+                )}
+
+                {/* 2. ID SYSTEM SECTION */}
+                {(pixelSetupTab === 'id' || pixelSetupTab === 'both') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    {/* Pixel ID */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Facebook Pixel ID (16-Digit)</span>
+                        <span className="text-[10px] text-slate-500">আইডি অপশন</span>
+                      </label>
+                      <div className="relative">
+                        <div className="w-4 h-4 rounded-full bg-[#1877f2] text-white text-[9px] font-bold flex items-center justify-center absolute left-3 top-2.5">
+                          f
+                        </div>
+                        <input
+                          type="text"
+                          value={fbPixelId}
+                          onChange={(e) => setFbPixelId(e.target.value)}
+                          placeholder="e.g. 1234567890123456"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono font-medium text-slate-800 bg-white"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Meta Events Manager থেকে পাওয়া ১৫ বা ১৬ ডিজিটের পিক্সেল আইডি দিন।
+                      </p>
+                    </div>
+
+                    {/* Conversion API Access Token */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Conversion API Access Token (Optional)
+                      </label>
+                      <div className="relative">
+                        <Key className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={fbApiToken}
+                          onChange={(e) => setFbApiToken(e.target.value)}
+                          placeholder="e.g. EAAG..."
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-rose-300 rounded-lg focus:outline-none focus:border-[#990000] font-mono truncate bg-white"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        সার্ভার-সাইড ট্র্যাকিং ও AdBlocker বাইপাসের জন্য Access Token।
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Test Events Trigger Bar */}
                 <div className="pt-2 border-t border-slate-100 space-y-2">

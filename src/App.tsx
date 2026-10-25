@@ -456,12 +456,15 @@ export default function App() {
     };
   }, []);
 
-  // 1. Initialize Facebook / Meta Pixel across entire application
+  // 1. Initialize Facebook / Meta Pixel across entire application (ID & Custom Code)
   useEffect(() => {
-    if (settings.fbPixelId && settings.fbPixelId.trim()) {
-      initFacebookPixel(settings.fbPixelId);
+    if (
+      (settings.fbPixelId && settings.fbPixelId.trim()) ||
+      (settings.fbPixelCustomCode && settings.fbPixelCustomCode.trim())
+    ) {
+      initFacebookPixel(settings.fbPixelId, settings.fbPixelCustomCode);
     }
-  }, [settings.fbPixelId]);
+  }, [settings.fbPixelId, settings.fbPixelCustomCode]);
 
   // 2. Track PageView automatically on every view/route change
   useEffect(() => {
