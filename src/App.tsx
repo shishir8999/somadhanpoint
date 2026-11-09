@@ -190,6 +190,7 @@ export default function App() {
   const [adminSettingsTab, setAdminSettingsTab] = useState<
     'web' | 'slider' | 'promo' | 'order' | 'coupons' | 'page' | 'pixel' | 'security'
   >('web');
+  const [openAddProductOnMount, setOpenAddProductOnMount] = useState(false);
 
   const handleOpenOrderTracking = () => {
     setOrderInitialTab('tracking');
@@ -690,7 +691,12 @@ export default function App() {
       case 'orders':
         setCurrentView('admin_orders');
         break;
+      case 'add_product':
+        setOpenAddProductOnMount(true);
+        setCurrentView('admin_products');
+        break;
       case 'all_products':
+        setOpenAddProductOnMount(false);
         setCurrentView('admin_products');
         break;
       case 'stock_management':
@@ -999,6 +1005,9 @@ export default function App() {
   if (currentView === 'admin_products') {
     return (
       <AllProductsPage
+        activePage={openAddProductOnMount ? 'add_product' : 'all_products'}
+        initialOpenAddModal={openAddProductOnMount}
+        onModalClose={() => setOpenAddProductOnMount(false)}
         onNavigate={handleAdminNavigate}
         onBackToStore={() => setCurrentView('home')}
       />

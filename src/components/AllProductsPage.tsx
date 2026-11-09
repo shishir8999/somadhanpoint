@@ -27,6 +27,7 @@ import {
   saveProductsToDatabase,
   saveSingleProductToDatabase,
   deleteProductFromDatabase,
+  fetchCategoriesFromDatabase,
 } from '../utils/apiSync';
 
 export interface AdminProductRow {
@@ -56,11 +57,17 @@ export interface AdminProductRow {
 }
 
 interface AllProductsPageProps {
+  activePage?: AdminPageType;
+  initialOpenAddModal?: boolean;
+  onModalClose?: () => void;
   onNavigate: (page: AdminPageType) => void;
   onBackToStore: () => void;
 }
 
 export const AllProductsPage: React.FC<AllProductsPageProps> = ({
+  activePage = 'all_products',
+  initialOpenAddModal = false,
+  onModalClose,
   onNavigate,
   onBackToStore,
 }) => {
@@ -78,7 +85,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(initialOpenAddModal);
   const [editingProduct, setEditingProduct] = useState<AdminProductRow | null>(null);
   const [productToDelete, setProductToDelete] = useState<AdminProductRow | null>(null);
   const isInitialMount = React.useRef(true);
@@ -91,6 +98,105 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     title: '',
     message: '',
   });
+
+  // Open Add Product modal when triggered from sidebar navigation or prop
+  useEffect(() => {
+    if (initialOpenAddModal) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenAddModal]);
+
+  // Dynamic user categories and brands for filter dropdowns
+  const [userCategories, setUserCategories] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  const [userBrands, setUserBrands] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ummah_admin_brands_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    const loadCats = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setUserCategories(parsed);
+        }
+      } catch {}
+    };
+    const loadBrands = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_brands_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setUserBrands(parsed);
+        }
+      } catch {}
+    };
+
+    loadCats();
+    loadBrands();
+
+    fetchCategoriesFromDatabase().then((dbCats) => {
+      if (dbCats && Array.isArray(dbCats)) {
+        setUserCategories(dbCats);
+        try {
+          localStorage.setItem('ummah_admin_categories_list', JSON.stringify(dbCats));
+        } catch {}
+      }
+    });
+
+    window.addEventListener('categories-updated', loadCats);
+    window.addEventListener('brands-updated', loadBrands);
+    window.addEventListener('storage', loadCats);
+    window.addEventListener('storage', loadBrands);
+    return () => {
+      window.removeEventListener('categories-updated', loadCats);
+      window.removeEventListener('brands-updated', loadBrands);
+      window.removeEventListener('storage', loadCats);
+      window.removeEventListener('storage', loadBrands);
+    };
+  }, []);
+
+  const categoryOptions: string[] = React.useMemo(() => {
+    const names: string[] = [];
+    userCategories.forEach((cat: any) => {
+      const name = typeof cat === 'string' ? cat.trim() : cat?.name?.trim();
+      if (name && !names.includes(name)) names.push(name);
+    });
+    return names;
+  }, [userCategories]);
+
+  const brandOptions: string[] = React.useMemo(() => {
+    const names: string[] = [];
+    userBrands.forEach((b: any) => {
+      const name = typeof b === 'string' ? b.trim() : b?.name?.trim();
+      if (name && !names.includes(name)) names.push(name);
+    });
+    if (names.length === 0) {
+      return ['Walton', 'Apex', 'Vision', 'Comforty'];
+    }
+    return names;
+  }, [userBrands]);
 
 
   // 20 Exact Products matching Screenshot 1
@@ -560,8 +666,14 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     <div className="min-h-screen flex bg-[#f8fafc] text-slate-800 font-sans">
       {/* 1. Left Unified Sidebar */}
       <AdminSidebar
-        activePage="all_products"
-        onNavigate={onNavigate}
+        activePage={isAddModalOpen ? 'add_product' : activePage}
+        onNavigate={(p) => {
+          if (p === 'add_product') {
+            setIsAddModalOpen(true);
+          } else {
+            onNavigate(p);
+          }
+        }}
         onBackToStore={onBackToStore}
       />
 
@@ -596,27 +708,28 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-700 focus:outline-none focus:border-slate-500"
+              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-700 focus:outline-none focus:border-slate-500 cursor-pointer"
             >
               <option value="All Category">All Category</option>
-              <option value="FORMAL SHOE">FORMAL SHOE</option>
-              <option value="Smart Watch">Smart Watch</option>
-              <option value="Wired Headphone">Wired Headphone</option>
-              <option value="Winter Jacket">Winter Jacket</option>
-              <option value="Woman Khimar">Woman Khimar</option>
-              <option value="Gadget and Accessories">Gadget and Accessories</option>
+              {categoryOptions.map((catName) => (
+                <option key={catName} value={catName}>
+                  {catName}
+                </option>
+              ))}
             </select>
 
             {/* Brand Dropdown */}
             <select
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
-              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-700 focus:outline-none focus:border-slate-500"
+              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-700 focus:outline-none focus:border-slate-500 cursor-pointer"
             >
               <option value="All Brand">All Brand</option>
-              <option value="Walton">Walton</option>
-              <option value="Vision">Vision</option>
-              <option value="Comforty">Comforty</option>
+              {brandOptions.map((bName) => (
+                <option key={bName} value={bName}>
+                  {bName}
+                </option>
+              ))}
             </select>
 
             {/* Section Dropdown */}
@@ -1075,7 +1188,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
         isOpen={isAddModalOpen}
         mode="add"
         product={null}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          if (onModalClose) onModalClose();
+        }}
         onSave={handleSaveProduct}
       />
 

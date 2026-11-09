@@ -33,6 +33,7 @@ import {
 export type AdminPageType =
   | 'dashboard'
   | 'orders'
+  | 'add_product'
   | 'all_products'
   | 'stock_management'
   | 'all_categories'
@@ -109,7 +110,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   // Accordion states
   const [isProductExpanded, setIsProductExpanded] = useState(
-    ['all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
+    ['add_product', 'all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
   );
   const [isUsersExpanded, setIsUsersExpanded] = useState(
     ['all_admin', 'all_customer', 'customer_wishlist', 'all_role'].includes(activePage)
@@ -272,12 +273,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             className={`flex items-center transition-colors text-left cursor-pointer ${
               collapsed
                 ? `w-10 h-10 justify-center rounded-lg ${
-                    ['all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
+                    ['add_product', 'all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
                       ? 'bg-[#1f2937] text-white font-bold'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`
                 : `w-full justify-between px-3 py-2 rounded-lg ${
-                    ['all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
+                    ['add_product', 'all_products', 'stock_management', 'all_categories', 'all_sections', 'all_brands', 'product_variants', 'reviews'].includes(activePage)
                       ? 'bg-[#1f2937]/70 text-white font-semibold'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`
@@ -295,6 +296,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {!collapsed && isProductExpanded && (
             <div className="pl-6 pr-2 py-1 space-y-0.5 border-l border-slate-700/60 ml-4 my-1">
               {[
+                { id: 'add_product', label: 'Add Product' },
                 { id: 'all_products', label: 'All Products' },
                 { id: 'stock_management', label: 'Stock Management' },
                 { id: 'all_categories', label: 'All Categories' },

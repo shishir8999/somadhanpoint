@@ -20,6 +20,7 @@ import {
 import { ProductVisual } from './ProductVisual';
 import { AdminProductRow } from './AllProductsPage';
 import { ColorVariant } from '../types';
+import { fetchCategoriesFromDatabase } from '../utils/apiSync';
 
 export const PRESET_APPAREL_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size'];
 export const PRESET_SHOE_SIZES = ['38', '39', '40', '41', '42', '43', '44', '45', '46'];
@@ -139,7 +140,122 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
   const [discountPercent, setDiscountPercent] = useState('');
   const [stock, setStock] = useState<number | string>(100);
   const [stockStatus, setStockStatus] = useState<'in_stock' | 'out_of_stock' | 'limited'>('in_stock');
-  const [category, setCategory] = useState('FORMAL SHOE');
+  // User custom categories and brands loaded from localStorage and backend
+  const [userCategories, setUserCategories] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  const [userBrands, setUserBrands] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ummah_admin_brands_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  // Keep categories & brands updated whenever storage or update events fire
+  useEffect(() => {
+    const loadCats = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_categories_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setUserCategories(parsed);
+        }
+      } catch {}
+    };
+
+    const loadBrands = () => {
+      try {
+        const saved = localStorage.getItem('ummah_admin_brands_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setUserBrands(parsed);
+        }
+      } catch {}
+    };
+
+    loadCats();
+    loadBrands();
+
+    fetchCategoriesFromDatabase().then((dbCats) => {
+      if (dbCats && Array.isArray(dbCats)) {
+        setUserCategories(dbCats);
+        try {
+          localStorage.setItem('ummah_admin_categories_list', JSON.stringify(dbCats));
+        } catch {}
+      }
+    });
+
+    window.addEventListener('categories-updated', loadCats);
+    window.addEventListener('brands-updated', loadBrands);
+    window.addEventListener('storage', loadCats);
+    window.addEventListener('storage', loadBrands);
+    return () => {
+      window.removeEventListener('categories-updated', loadCats);
+      window.removeEventListener('brands-updated', loadBrands);
+      window.removeEventListener('storage', loadCats);
+      window.removeEventListener('storage', loadBrands);
+    };
+  }, [isOpen]);
+
+  // Dynamic category options from user's custom categories
+  const categoryOptions: string[] = React.useMemo(() => {
+    const names: string[] = [];
+    userCategories.forEach((cat: any) => {
+      const name = typeof cat === 'string' ? cat.trim() : cat?.name?.trim();
+      if (name && !names.includes(name)) {
+        names.push(name);
+      }
+    });
+
+    // If editing a product with a category not in list, preserve it
+    if (product?.category && product.category !== '—' && !names.includes(product.category.trim())) {
+      names.unshift(product.category.trim());
+    }
+
+    return names;
+  }, [userCategories, product]);
+
+  const brandOptions: string[] = React.useMemo(() => {
+    const list: string[] = [];
+    userBrands.forEach((b: any) => {
+      const name = typeof b === 'string' ? b.trim() : b?.name?.trim();
+      if (name && !list.includes(name)) list.push(name);
+    });
+    if (list.length === 0) {
+      return PRESET_BRANDS;
+    }
+    return list;
+  }, [userBrands]);
+
+  const [category, setCategory] = useState<string>(() => {
+    if (product?.category && product.category !== '—') return product.category;
+    try {
+      const saved = localStorage.getItem('ummah_admin_categories_list');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.name) {
+          return parsed[0].name;
+        }
+      }
+    } catch {}
+    return '';
+  });
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('Walton');
   const [section, setSection] = useState('hot_deals');
@@ -147,36 +263,23 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
   const [description, setDescription] = useState('');
   const [visualType, setVisualType] = useState('formal_shoe');
 
-  // Resolve available subcategories for selected category
+  // Resolve available subcategories strictly from selected custom category
   const availableSubcategories: string[] = React.useMemo(() => {
+    if (!category.trim()) return [];
     try {
-      const saved = localStorage.getItem('ummah_admin_categories_list');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const match = parsed.find(
-          (c: any) => c.name?.toLowerCase().trim() === category.toLowerCase().trim()
-        );
-        if (match && Array.isArray(match.subcategories) && match.subcategories.length > 0) {
-          return match.subcategories.map((s: any) => s.name);
-        }
+      const match = userCategories.find(
+        (c: any) => (c.name || '').toLowerCase().trim() === category.toLowerCase().trim()
+      );
+      if (match && Array.isArray(match.subcategories) && match.subcategories.length > 0) {
+        return match.subcategories
+          .map((s: any) => (typeof s === 'string' ? s.trim() : s?.name?.trim()))
+          .filter(Boolean);
       }
     } catch {
       // ignore
     }
-    const fallbackMap: { [key: string]: string[] } = {
-      'Woman Khimar': ['Cotton Khimar', 'Georgette Khimar', 'Two-Piece Khimar Set', 'French Khimar'],
-      'FORMAL SHOE': ['Leather Half Shoe', 'Oxford Formal Shoe', 'Loafer Shoe', 'Pure Leather Sandal'],
-      'Woman Borka': ['Dubai Cherry Borka', 'Abaya Borka', 'Coat Borka'],
-      'Kids Khimar': ['Kids Cotton Khimar', 'Kids Party Khimar'],
-      "Man's Shirt": ['Formal Cotton Shirt', 'Casual Oxford Shirt', 'Printed Linen Shirt'],
-      'Winter Jacket': ['Windbreaker Jacket', 'Bomber Jacket', 'Hoodie Jacket'],
-      "Man's Jubba": ['Arabian Tory Jubba', 'Embroidered Jubba', 'Short Kurta Jubba'],
-      'Electronics': ['Rechargeable Table Fans', 'Electric Kettles & Grinders', 'Desk Lamps'],
-      'Leather Goods': ['Executive Laptop Bags', 'Genuine Leather Wallets', 'Leather Belts'],
-      'Gadget and Accessories': ['Smart Watches', 'Wireless Earbuds', 'Bluetooth Speakers'],
-    };
-    return fallbackMap[category] || [];
-  }, [category]);
+    return [];
+  }, [category, userCategories]);
 
   // Media States (Thumbnail & Gallery exactly matching the user's uploaded screenshot)
   const [thumbnailUrl, setThumbnailUrl] = useState('');
@@ -219,9 +322,9 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
           ? 'limited'
           : 'out_of_stock'
       );
-      setCategory(product.category || 'FORMAL SHOE');
+      setCategory(product.category || (categoryOptions[0] || ''));
       setSubcategory(product.subcategory || '');
-      setBrand(product.brand && product.brand !== '—' ? product.brand : 'Generic');
+      setBrand(product.brand && product.brand !== '—' ? product.brand : (brandOptions[0] || 'Generic'));
       setSection(product.section || 'hot_deals');
       setBadge(product.badge || '');
       setDescription(product.description || '');
@@ -242,6 +345,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
       }
       setColorImages(initialColorMap);
     } else if (mode === 'add') {
+      const defaultCat = categoryOptions.length > 0 ? categoryOptions[0] : (userCategories[0]?.name || '');
       setName('');
       setSku(`UMB-${Date.now().toString().slice(-4)}`);
       setPrice(990);
@@ -249,9 +353,9 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
       setDiscountPercent('-18%');
       setStock(100);
       setStockStatus('in_stock');
-      setCategory('FORMAL SHOE');
+      setCategory(defaultCat);
       setSubcategory('');
-      setBrand('Walton');
+      setBrand(brandOptions[0] || 'Generic');
       setSection('hot_deals');
       setBadge('ডেলিভারি ফ্রি');
       setDescription('');
@@ -1146,13 +1250,17 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
                       setCategory(e.target.value);
                       setSubcategory('');
                     }}
-                    className="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] bg-white cursor-pointer"
+                    className="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] bg-white cursor-pointer font-medium"
                   >
-                    {PRESET_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    {categoryOptions.length === 0 ? (
+                      <option value="">কোনো ক্যাটাগরি পাওয়া যায়নি (প্রথমে All Categories থেকে তৈরি করুন)</option>
+                    ) : (
+                      categoryOptions.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1210,7 +1318,7 @@ export const AdminProductModal: React.FC<AdminProductModalProps> = ({
                       list="brand-options"
                     />
                     <datalist id="brand-options">
-                      {PRESET_BRANDS.map((b) => (
+                      {brandOptions.map((b) => (
                         <option key={b} value={b} />
                       ))}
                     </datalist>
