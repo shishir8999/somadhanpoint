@@ -169,6 +169,11 @@ try {
         'discount' => 'DECIMAL(12,2) DEFAULT 0',
         'total' => 'DECIMAL(12,2) DEFAULT 0',
         'status' => "VARCHAR(50) DEFAULT 'Pending'",
+        'courier' => "VARCHAR(100) DEFAULT 'Steadfast'",
+        'courier_tracking_code' => "VARCHAR(100) DEFAULT NULL",
+        'notes' => "TEXT DEFAULT NULL",
+        'source' => "VARCHAR(100) DEFAULT 'Website'",
+        'employee' => "VARCHAR(100) DEFAULT 'Employee 1'",
     ];
     foreach ($neededCols as $col => $definition) {
         if (!in_array($col, $ordCols)) {
@@ -768,10 +773,43 @@ try {
     }
 
     // ---------------------------------------------------------------------
-    // 5. ORDERS (/api/orders, /api/orders/create)
+    // 5. ORDERS (/api/orders, /api/orders/sync, /api/orders/create)
     // ---------------------------------------------------------------------
     if ($resource === 'orders') {
         if ($method === 'POST') {
+            // Handle bulk orders sync (/api/orders/sync or body with 'orders')
+            if ($resourceId === 'sync' || isset($body['orders'])) {
+                $ordersToSync = $body['orders'] ?? [];
+                if (is_array($ordersToSync)) {
+                    $uStmt = $pdo->prepare("
+                        UPDATE orders SET
+                            status = :status,
+                            courier = :courier,
+                            courier_tracking_code = :tracking,
+                            notes = :notes,
+                            updated_at = NOW()
+                        WHERE id = :id OR order_number = :num
+                    ");
+                    foreach ($ordersToSync as $syncOrd) {
+                        if (!empty($syncOrd['id']) || !empty($syncOrd['orderNumber'])) {
+                            try {
+                                $uStmt->execute([
+                                    ':status' => $syncOrd['status'] ?? 'Pending',
+                                    ':courier' => $syncOrd['courier'] ?? 'Steadfast',
+                                    ':tracking' => $syncOrd['courierTrackingCode'] ?? '',
+                                    ':notes' => $syncOrd['notes'] ?? '',
+                                    ':id' => $syncOrd['id'] ?? '',
+                                    ':num' => $syncOrd['orderNumber'] ?? '',
+                                ]);
+                            } catch (Exception $e) {}
+                        }
+                    }
+                }
+                echo json_encode(['success' => true, 'message' => 'Orders synced successfully'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // Create new order
             $ord = $body;
             $orderId = 'ORD-' . strtoupper(substr(uniqid(), -6));
             $orderNumber = 'SP-' . rand(10000, 99999);
@@ -780,9 +818,9 @@ try {
                 INSERT INTO orders (
                     id, order_number, customer_name, customer_phone, customer_address,
                     payment_method, delivery_area, subtotal, delivery_charge, discount, total,
-                    status, created_at, updated_at
+                    status, courier, notes, created_at, updated_at
                 ) VALUES (
-                    :id, :num, :name, :phone, :addr, :pay, :area, :sub, :del, :disc, :tot, 'Pending', NOW(), NOW()
+                    :id, :num, :name, :phone, :addr, :pay, :area, :sub, :del, :disc, :tot, 'Pending', 'Steadfast', :notes, NOW(), NOW()
                 )
             ");
             $stmt->execute([
@@ -797,6 +835,7 @@ try {
                 ':del' => floatval($ord['deliveryCharge'] ?? 60),
                 ':disc' => floatval($ord['discount'] ?? 0),
                 ':tot' => floatval($ord['total'] ?? 0),
+                ':notes' => $ord['notes'] ?? '',
             ]);
 
             // Save order items
@@ -827,7 +866,7 @@ try {
                 'message' => 'Order created successfully in database',
                 'orderNumber' => $orderNumber,
                 'orderId' => $orderId,
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -838,23 +877,67 @@ try {
                 $iStmt = $pdo->prepare("SELECT * FROM order_items WHERE order_id = :oid");
                 $iStmt->execute([':oid' => $o['id']]);
                 $items = $iStmt->fetchAll();
+
+                $formattedDate = $o['created_at'] ? date('d M y • h.i A', strtotime($o['created_at'])) : 'Today';
+
+                // Format products array matching OrderItem interface
+                $products = array_map(function($i) {
+                    return [
+                        'name' => $i['product_name'] ?: 'Product',
+                        'qty' => intval($i['quantity'] ?? 1),
+                        'visualType' => 'kids_khimar_pink',
+                        'price' => floatval($i['unit_price'] ?? 0),
+                        'color' => $i['selected_color'] ?? null,
+                        'size' => $i['selected_size'] ?? null,
+                    ];
+                }, $items);
+
+                if (empty($products)) {
+                    $products = [
+                        [
+                            'name' => 'অর্ডার আইটেম',
+                            'qty' => 1,
+                            'visualType' => 'kids_khimar_pink',
+                            'price' => floatval($o['total'] ?? 0),
+                        ]
+                    ];
+                }
+
+                // Format items array matching storefront Order interface
+                $storeItems = array_map(function($i) {
+                    return [
+                        'name' => $i['product_name'] ?: 'Product',
+                        'quantity' => intval($i['quantity'] ?? 1),
+                        'qty' => intval($i['quantity'] ?? 1),
+                        'price' => floatval($i['unit_price'] ?? 0),
+                        'color' => $i['selected_color'] ?? null,
+                        'size' => $i['selected_size'] ?? null,
+                    ];
+                }, $items);
+
                 return [
-                    'id' => $o['id'],
-                    'orderNumber' => $o['order_number'],
-                    'customerName' => $o['customer_name'],
-                    'customerPhone' => $o['customer_phone'],
-                    'customerAddress' => $o['customer_address'],
-                    'total' => floatval($o['total']),
-                    'status' => $o['status'],
-                    'items' => array_map(function($i) {
-                        return [
-                            'name' => $i['product_name'],
-                            'quantity' => intval($i['quantity']),
-                            'price' => floatval($i['unit_price'] ?? $i['price'] ?? 0),
-                            'color' => $i['selected_color'] ?? $i['color'] ?? null,
-                            'size' => $i['selected_size'] ?? $i['size'] ?? null,
-                        ];
-                    }, $items),
+                    'id' => (string)$o['id'],
+                    'orderNumber' => $o['order_number'] ?: 'SP-' . substr($o['id'], -5),
+                    'date' => $formattedDate,
+                    'timeAgo' => 'Recent',
+                    'customerName' => $o['customer_name'] ?: 'সম্মানিত ক্রেতা',
+                    'customerPhone' => $o['customer_phone'] ?: '',
+                    'phone' => $o['customer_phone'] ?: '',
+                    'customerAddress' => $o['customer_address'] ?: 'ঢাকা',
+                    'address' => $o['customer_address'] ?: 'ঢাকা',
+                    'total' => floatval($o['total'] ?? 0),
+                    'amount' => floatval($o['total'] ?? 0),
+                    'deliveryCharge' => floatval($o['delivery_charge'] ?? 60),
+                    'advance' => 0,
+                    'discount' => floatval($o['discount'] ?? 0),
+                    'status' => $o['status'] ?: 'Pending',
+                    'courier' => $o['courier'] ?: 'Steadfast',
+                    'courierTrackingCode' => $o['courier_tracking_code'] ?: '',
+                    'notes' => $o['notes'] ?: '',
+                    'source' => $o['source'] ?: 'Website',
+                    'employee' => $o['employee'] ?: 'Employee 1',
+                    'products' => $products,
+                    'items' => $storeItems,
                     'createdAt' => $o['created_at'],
                 ];
             }, $rows);
