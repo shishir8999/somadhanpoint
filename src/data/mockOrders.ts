@@ -36,6 +36,96 @@ export interface OrderItem {
 
 export const ADMIN_ORDERS_STORAGE_KEY = 'ummah_admin_orders_list';
 
+/**
+ * Normalizes any raw order object into a safe, valid OrderItem.
+ * Prevents "Cannot read properties of undefined (reading 'map')" and missing fields.
+ */
+export const normalizeOrderItem = (raw: any): OrderItem => {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: String(Date.now()),
+      orderNumber: 'SP-' + Math.floor(Math.random() * 90000 + 10000),
+      date: 'Today',
+      timeAgo: 'Just now',
+      customerName: 'গ্রাহক',
+      phone: '',
+      address: 'ঢাকা',
+      products: [{ name: 'অর্ডার আইটেম', qty: 1, visualType: 'kids_khimar_pink' }],
+      amount: 0,
+      deliveryCharge: 60,
+      advance: 0,
+      discount: 0,
+      status: 'Pending',
+      courier: 'Steadfast',
+      employee: 'Employee 1',
+    };
+  }
+
+  let products: Array<{ name: string; qty: number; visualType: string; image?: string }> = [];
+
+  if (Array.isArray(raw.products) && raw.products.length > 0) {
+    products = raw.products.map((p: any) => ({
+      name: String(p?.name || p?.product_name || 'পণ্য'),
+      qty: Math.max(1, Number(p?.qty || p?.quantity || 1)),
+      visualType: String(p?.visualType || 'kids_khimar_pink'),
+      image: p?.image || p?.imageUrl || undefined,
+    }));
+  } else if (Array.isArray(raw.items) && raw.items.length > 0) {
+    products = raw.items.map((it: any) => ({
+      name: String(it?.name || it?.product_name || 'পণ্য'),
+      qty: Math.max(1, Number(it?.quantity || it?.qty || 1)),
+      visualType: String(it?.visualType || 'kids_khimar_pink'),
+      image: it?.image || it?.imageUrl || undefined,
+    }));
+  } else if (raw.productName || raw.product) {
+    products = [
+      {
+        name: String(raw.productName || raw.product || 'পণ্য'),
+        qty: Math.max(1, Number(raw.qty || raw.quantity || 1)),
+        visualType: 'kids_khimar_pink',
+      },
+    ];
+  } else {
+    products = [{ name: 'অর্ডার আইটেম', qty: 1, visualType: 'kids_khimar_pink' }];
+  }
+
+  const phone = String(raw.phone || raw.customerPhone || raw.customer_phone || '');
+  const address = String(raw.address || raw.customerAddress || raw.customer_address || 'ঢাকা');
+  const customerName = String(raw.customerName || raw.name || raw.customer_name || 'গ্রাহক');
+  const rawAmount = Number(raw.amount ?? raw.total ?? 0);
+  const rawDelivery = Number(raw.deliveryCharge ?? raw.delivery_charge ?? raw.deliveryFee ?? 60);
+
+  return {
+    id: String(raw.id || raw.orderNumber || Date.now()),
+    orderNumber: String(raw.orderNumber || raw.id || 'SP-' + Math.floor(Math.random() * 90000 + 10000)),
+    date: String(
+      raw.date ||
+        (raw.createdAt
+          ? new Date(raw.createdAt).toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: '2-digit',
+            })
+          : 'Today')
+    ),
+    timeAgo: String(raw.timeAgo || 'Recent'),
+    customerName,
+    phone,
+    address,
+    products,
+    amount: isNaN(rawAmount) ? 0 : rawAmount,
+    deliveryCharge: isNaN(rawDelivery) ? 60 : rawDelivery,
+    advance: Number(raw.advance || 0),
+    discount: Number(raw.discount || 0),
+    status: (raw.status as any) || 'Pending',
+    courier: String(raw.courier || 'Steadfast'),
+    courierTrackingCode: raw.courierTrackingCode || raw.courier_tracking_code || '',
+    source: String(raw.source || 'Website'),
+    notes: String(raw.notes || ''),
+    employee: String(raw.employee || 'Employee 1'),
+  };
+};
+
 export const DEFAULT_MOCK_ORDERS: OrderItem[] = [
   {
     id: '57514',
@@ -449,20 +539,22 @@ export const DEFAULT_MOCK_ORDERS: OrderItem[] = [
 
 /**
  * Loads stored admin orders from localStorage.
- * If user has explicitly modified/deleted orders (even if empty []), returns that.
- * Only returns default mock orders on fresh first run.
+ * Normalizes every single order so missing products or properties NEVER crash with `.map()`.
  */
 export const getStoredAdminOrders = (): OrderItem[] => {
-  if (typeof window === 'undefined') return DEFAULT_MOCK_ORDERS;
+  if (typeof window === 'undefined') return DEFAULT_MOCK_ORDERS.map(normalizeOrderItem);
   try {
     const saved = localStorage.getItem(ADMIN_ORDERS_STORAGE_KEY);
     if (saved !== null) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(normalizeOrderItem);
+      }
     }
   } catch (e) {
     console.error('Failed to parse admin orders from localStorage', e);
   }
-  return DEFAULT_MOCK_ORDERS;
+  return DEFAULT_MOCK_ORDERS.map(normalizeOrderItem);
 };
 
 // Initial background sync from server database
@@ -471,7 +563,8 @@ if (typeof window !== 'undefined') {
     try {
       const dbOrders = await fetchOrdersFromDatabase();
       if (dbOrders && Array.isArray(dbOrders) && dbOrders.length > 0) {
-        localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(dbOrders));
+        const normalized = dbOrders.map(normalizeOrderItem);
+        localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(normalized));
         window.dispatchEvent(new Event('ummah_admin_orders_updated'));
       }
     } catch (e) {
@@ -486,10 +579,11 @@ if (typeof window !== 'undefined') {
 export const saveStoredAdminOrders = (orders: OrderItem[]): void => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    const normalized = Array.isArray(orders) ? orders.map(normalizeOrderItem) : [];
+    localStorage.setItem(ADMIN_ORDERS_STORAGE_KEY, JSON.stringify(normalized));
     window.dispatchEvent(new Event('ummah_admin_orders_updated'));
     // Persist permanently in server database & backup
-    saveOrdersToDatabase(orders);
+    saveOrdersToDatabase(normalized);
   } catch (e) {
     console.error('Failed to save orders to localStorage', e);
   }

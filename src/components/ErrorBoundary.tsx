@@ -26,8 +26,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleHardReload = () => {
     try {
-      // Clear potentially corrupted transient session items
       sessionStorage.clear();
+      // If cached orders data was corrupt/malformed, clear it so fresh data loads
+      const orders = localStorage.getItem('ummah_admin_orders_list');
+      if (orders && (orders.includes('"products":undefined') || !orders.includes('"products"'))) {
+        localStorage.removeItem('ummah_admin_orders_list');
+      }
     } catch {}
     window.location.reload();
   };
@@ -36,6 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       localStorage.removeItem('ecom_admin_sidebar_collapsed');
       localStorage.removeItem('ecom_admin_dark_mode');
+      localStorage.removeItem('ummah_admin_orders_list');
     } catch {}
     window.location.href = '/admin';
   };

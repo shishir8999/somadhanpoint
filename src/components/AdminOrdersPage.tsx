@@ -41,7 +41,9 @@ import {
   getStoredAdminOrders,
   saveStoredAdminOrders,
   resetStoredAdminOrders,
+  normalizeOrderItem,
 } from '../data/mockOrders';
+import { fetchOrdersFromDatabase } from '../utils/apiSync';
 import { triggerGlobalSuccessModal } from '../context/SuccessModalContext';
 
 export type { OrderItem };
@@ -192,7 +194,32 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
   };
 
   // Persistent orders dataset loaded from localStorage or default mock
-  const [ordersList, setOrdersList] = useState<OrderItem[]>(getStoredAdminOrders);
+  const [ordersList, setOrdersList] = useState<OrderItem[]>(() => {
+    return getStoredAdminOrders().map(normalizeOrderItem);
+  });
+
+  // Keep synced with background database fetches and cross-tab storage changes
+  useEffect(() => {
+    const handleSync = () => {
+      setOrdersList(getStoredAdminOrders().map(normalizeOrderItem));
+    };
+    window.addEventListener('ummah_admin_orders_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    // Also fetch fresh orders directly from server database when visiting this page
+    fetchOrdersFromDatabase().then((dbOrders) => {
+      if (dbOrders && Array.isArray(dbOrders) && dbOrders.length > 0) {
+        const normalized = dbOrders.map(normalizeOrderItem);
+        setOrdersList(normalized);
+        saveStoredAdminOrders(normalized);
+      }
+    });
+
+    return () => {
+      window.removeEventListener('ummah_admin_orders_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
 
   // Automatically save to localStorage on every change
   useEffect(() => {
@@ -226,47 +253,60 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
     }
   };
 
-  // Filter orders based on dropdowns & search
-  const filteredOrders = ordersList.filter((ord) => {
-    // 1. Status Filter Dropdown
-    const matchesStatus =
-      selectedStatusTab === 'All'
-        ? true
-        : selectedStatusTab === 'Pending'
-        ? ['Pending', 'Pending Response', 'New', 'Incomplete', 'No Response'].includes(ord.status)
-        : selectedStatusTab === 'Cancelled'
-        ? ['Cancelled', 'Fake'].includes(ord.status)
-        : ord.status.toLowerCase() === selectedStatusTab.toLowerCase();
+  // Filter orders based on dropdowns & search with 100% null-safety
+  const filteredOrders = (Array.isArray(ordersList) ? ordersList : [])
+    .map(normalizeOrderItem)
+    .filter((ord) => {
+      // 1. Status Filter Dropdown
+      const ordStatus = String(ord.status || 'Pending');
+      const matchesStatus =
+        selectedStatusTab === 'All'
+          ? true
+          : selectedStatusTab === 'Pending'
+          ? ['Pending', 'Pending Response', 'New', 'Incomplete', 'No Response'].includes(ordStatus)
+          : selectedStatusTab === 'Cancelled'
+          ? ['Cancelled', 'Fake'].includes(ordStatus)
+          : ordStatus.toLowerCase() === selectedStatusTab.toLowerCase();
 
-    // 2. Order Search
-    const matchesOrderSearch =
-      searchOrderQuery.trim() === '' ||
-      ord.orderNumber.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.customerName.toLowerCase().includes(searchOrderQuery.toLowerCase()) ||
-      ord.phone.includes(searchOrderQuery) ||
-      ord.address.toLowerCase().includes(searchOrderQuery.toLowerCase());
+      // 2. Order Search
+      const query = searchOrderQuery.trim().toLowerCase();
+      const matchesOrderSearch =
+        query === '' ||
+        String(ord.orderNumber || '').toLowerCase().includes(query) ||
+        String(ord.customerName || '').toLowerCase().includes(query) ||
+        String(ord.phone || '').includes(searchOrderQuery.trim()) ||
+        String(ord.address || '').toLowerCase().includes(query);
 
-    // 3. Product Search
-    const matchesProductSearch =
-      searchProductQuery.trim() === '' ||
-      ord.products.some((p) => p.name.toLowerCase().includes(searchProductQuery.toLowerCase()));
+      // 3. Product Search
+      const pQuery = searchProductQuery.trim().toLowerCase();
+      const safeProducts = Array.isArray(ord.products) ? ord.products : [];
+      const matchesProductSearch =
+        pQuery === '' ||
+        safeProducts.some((p) => String(p?.name || '').toLowerCase().includes(pQuery));
 
-    // 4. Employee Filter
-    const matchesEmployee =
-      selectedEmployeeFilter === 'all' || ord.employee === selectedEmployeeFilter;
+      // 4. Employee Filter
+      const matchesEmployee =
+        selectedEmployeeFilter === 'all' || ord.employee === selectedEmployeeFilter;
 
-    // 5. Courier Filter
-    const matchesCourier =
-      selectedCourierFilter === 'all' ||
-      ord.courier.toLowerCase() === selectedCourierFilter.toLowerCase();
+      // 5. Courier Filter
+      const matchesCourier =
+        selectedCourierFilter === 'all' ||
+        String(ord.courier || '').toLowerCase() === selectedCourierFilter.toLowerCase();
 
-    // 6. Source Filter
-    const matchesSource =
-      selectedSourceFilter === 'all' ||
-      (ord.source || 'Website').toLowerCase() === selectedSourceFilter.toLowerCase();
+      // 6. Source Filter
+      const matchesSource =
+        selectedSourceFilter === 'all' ||
+        String(ord.source || 'Website').toLowerCase() === selectedSourceFilter.toLowerCase();
 
-    return matchesStatus && matchesOrderSearch && matchesProductSearch && matchesEmployee && matchesCourier && matchesSource;
-  });
+      return (
+        matchesStatus &&
+        matchesOrderSearch &&
+        matchesProductSearch &&
+        matchesEmployee &&
+        matchesCourier &&
+        matchesSource
+      );
+    });
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -346,15 +386,19 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
       alert('পপআপ উইন্ডো ব্লক করা রয়েছে। অনুগ্রহ করে ব্রাউজার সেটিংস থেকে পপআপ অ্যালাউ করুন।');
       return;
     }
-    const itemsHtml = ord.products
+    const safeProducts = Array.isArray(ord?.products) ? ord.products : [];
+    const totalQty = safeProducts.reduce((acc, i) => acc + (i?.qty || 1), 0) || 1;
+    const safeAmount = Number(ord?.amount || 0);
+
+    const itemsHtml = safeProducts
       .map(
         (p, idx) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center;">${idx + 1}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #0f172a;">${p.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center; font-weight: bold;">${p.qty}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right;">৳${Math.round(ord.amount / ord.products.reduce((acc, i) => acc + i.qty, 1)).toLocaleString()}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right; font-weight: bold; color: #0f172a;">৳${ord.amount.toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #0f172a;">${p?.name || 'পণ্য'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center; font-weight: bold;">${p?.qty || 1}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right;">৳${Math.round(safeAmount / totalQty).toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: right; font-weight: bold; color: #0f172a;">৳${safeAmount.toLocaleString()}</td>
       </tr>
     `
       )
@@ -872,13 +916,13 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
                         {/* Products Thumbnails & Summary */}
                         <td className="p-2.5 min-w-[170px] max-w-[200px]">
                           <div className="space-y-1">
-                            {ord.products.map((p, i) => (
+                            {(Array.isArray(ord.products) ? ord.products : []).map((p, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-                                  <ProductVisual visualType={p.visualType} />
+                                  <ProductVisual visualType={p?.visualType || 'kids_khimar_pink'} />
                                 </div>
                                 <span className="text-[11px] font-medium text-slate-700 truncate max-w-[150px]">
-                                  {p.qty}× {p.name}
+                                  {p?.qty || 1}× {p?.name || 'পণ্য'}
                                 </span>
                               </div>
                             ))}
@@ -888,13 +932,13 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
                         {/* Amount */}
                         <td className="p-2.5 whitespace-nowrap">
                           <span className="font-bold text-slate-900 block text-xs">
-                            ৳ {ord.amount.toLocaleString()}
+                            ৳ {(Number(ord.amount) || 0).toLocaleString()}
                           </span>
                           <span className="text-[9px] text-slate-400 block">
-                            Adv {ord.advance} • Disc {ord.discount}
+                            Adv {ord.advance || 0} • Disc {ord.discount || 0}
                           </span>
                           <span className="text-[9px] text-slate-500 block font-medium">
-                            Delivery {ord.deliveryCharge}
+                            Delivery {ord.deliveryCharge || 0}
                           </span>
                         </td>
 
@@ -1623,23 +1667,31 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {viewingOrder.products.map((p, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="p-2.5 flex items-center gap-2">
-                          <div className="w-7 h-7 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-                            <ProductVisual visualType={p.visualType} />
-                          </div>
-                          <span className="font-semibold text-slate-800">{p.name}</span>
-                        </td>
-                        <td className="p-2.5 text-center font-bold text-slate-700">{p.qty}</td>
-                        <td className="p-2.5 text-right text-slate-600">
-                          ৳{Math.round(viewingOrder.amount / viewingOrder.products.reduce((acc, i) => acc + i.qty, 1)).toLocaleString()}
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-slate-900">
-                          ৳{viewingOrder.amount.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {(Array.isArray(viewingOrder?.products) ? viewingOrder.products : []).map((p, idx) => {
+                      const totalViewingQty = (Array.isArray(viewingOrder?.products) ? viewingOrder.products : []).reduce(
+                        (acc, i) => acc + (i?.qty || 1),
+                        0
+                      ) || 1;
+                      const viewingAmt = Number(viewingOrder?.amount || 0);
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="p-2.5 flex items-center gap-2">
+                            <div className="w-7 h-7 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                              <ProductVisual visualType={p?.visualType || 'kids_khimar_pink'} />
+                            </div>
+                            <span className="font-semibold text-slate-800">{p?.name || 'পণ্য'}</span>
+                          </td>
+                          <td className="p-2.5 text-center font-bold text-slate-700">{p?.qty || 1}</td>
+                          <td className="p-2.5 text-right text-slate-600">
+                            ৳{Math.round(viewingAmt / totalViewingQty).toLocaleString()}
+                          </td>
+                          <td className="p-2.5 text-right font-bold text-slate-900">
+                            ৳{viewingAmt.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
