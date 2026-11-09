@@ -806,26 +806,6 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">অথবা ডিফল্ট আইকন টাইপ</label>
-                <select
-                  value={newVisualType}
-                  onChange={(e) => setNewVisualType(e.target.value)}
-                  className="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:outline-none bg-white text-slate-900 cursor-pointer"
-                >
-                  <option value="cat_khimar">Woman Khimar (ছবি)</option>
-                  <option value="cat_formal_shoe">Formal Shoe (ছবি)</option>
-                  <option value="cat_borka">Woman Borka (ছবি)</option>
-                  <option value="cat_kids_khimar">Kids Khimar (ছবি)</option>
-                  <option value="cat_shirt">Man's Shirt (ছবি)</option>
-                  <option value="cat_jacket">Winter Jacket (ছবি)</option>
-                  <option value="cat_jubba">Man's Jubba (ছবি)</option>
-                  <option value="cat_electronics">Electronics (ছবি)</option>
-                  <option value="cat_leather">Leather Goods (ছবি)</option>
-                  <option value="cat_gadgets">Gadget and Accessories (ছবি)</option>
-                </select>
-              </div>
-
               {/* Subcategories Section */}
               <div className="p-3.5 bg-purple-50/50 border border-purple-200 rounded-lg space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -1021,28 +1001,6 @@ export const AllCategoriesPage: React.FC<AllCategoriesPageProps> = ({
                     className="w-full px-3 py-1.5 text-[11px] border border-slate-300 rounded-lg focus:outline-none focus:border-[#990000] text-slate-900 placeholder-slate-400"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">অথবা ডিফল্ট আইকন টাইপ</label>
-                <select
-                  value={editingCategory.visualType}
-                  onChange={(e) =>
-                    setEditingCategory({ ...editingCategory, visualType: e.target.value })
-                  }
-                  className="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:outline-none bg-white text-slate-900 cursor-pointer"
-                >
-                  <option value="cat_khimar">Woman Khimar (ছবি)</option>
-                  <option value="cat_formal_shoe">Formal Shoe (ছবি)</option>
-                  <option value="cat_borka">Woman Borka (ছবি)</option>
-                  <option value="cat_kids_khimar">Kids Khimar (ছবি)</option>
-                  <option value="cat_shirt">Man's Shirt (ছবি)</option>
-                  <option value="cat_jacket">Winter Jacket (ছবি)</option>
-                  <option value="cat_jubba">Man's Jubba (ছবি)</option>
-                  <option value="cat_electronics">Electronics (ছবি)</option>
-                  <option value="cat_leather">Leather Goods (ছবি)</option>
-                  <option value="cat_gadgets">Gadget and Accessories (ছবি)</option>
-                </select>
               </div>
 
               {/* Subcategories list in Edit Modal */}

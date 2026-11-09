@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   Ban,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  MapPin,
+  Users,
+  Filter
 } from 'lucide-react';
 import { AdminSidebar, AdminPageType } from './AdminSidebar';
 
@@ -29,6 +32,7 @@ export const AllCustomersPage: React.FC<AllCustomersPageProps> = ({
   onBackToStore,
 }) => {
   const [statusFilter, setStatusFilter] = useState('All customers');
+  const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -256,18 +260,32 @@ export const AllCustomersPage: React.FC<AllCustomersPageProps> = ({
     );
   };
 
+  // District count calculation
+  const districtCounts = useMemo(() => {
+    const map: { [d: string]: number } = {};
+    customersList.forEach((c) => {
+      const d = (c.district || 'অন্যান্য').trim();
+      map[d] = (map[d] || 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [customersList]);
+
   const filteredCustomers = customersList.filter((c) => {
     const matchesSearch =
       searchQuery.trim() === '' ||
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.number.includes(searchQuery.trim()) ||
       c.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.district.toLowerCase().includes(searchQuery.toLowerCase());
+      c.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.upazila.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus =
       statusFilter === 'All customers' || c.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesDistrict =
+      selectedDistrict === 'All' || c.district.trim() === selectedDistrict.trim();
+
+    return matchesSearch && matchesStatus && matchesDistrict;
   });
 
   return (
@@ -296,6 +314,20 @@ export const AllCustomersPage: React.FC<AllCustomersPageProps> = ({
           </h1>
 
           <div className="flex items-center gap-2.5">
+            {/* District Filter Dropdown */}
+            <select
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white text-slate-700 focus:outline-none focus:border-[#990000] cursor-pointer"
+            >
+              <option value="All">সকল জেলা ({customersList.length})</option>
+              {districtCounts.map(([d, cnt]) => (
+                <option key={d} value={d}>
+                  {d} ({cnt} জন)
+                </option>
+              ))}
+            </select>
+
             {/* Filter Dropdown */}
             <select
               value={statusFilter}
@@ -320,6 +352,68 @@ export const AllCustomersPage: React.FC<AllCustomersPageProps> = ({
             </div>
           </div>
         </header>
+
+        {/* District Summary & Filter Pills Bar */}
+        <div className="px-6 pt-5 pb-1">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#990000]" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  জেলা অনুযায়ী কাস্টমার পরিসংখ্যান ও ফিল্টার
+                </h3>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                মোট জেলা: <span className="font-bold text-[#990000]">{districtCounts.length}</span> টি | 
+                কাস্টমার দেখানো হচ্ছে: <span className="font-bold text-slate-900">{filteredCustomers.length}</span> জন
+              </span>
+            </div>
+
+            {/* District Pills with Customer Counts */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedDistrict('All')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                  selectedDistrict === 'All'
+                    ? 'bg-[#1e293b] text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                <span>সকল জেলা (All)</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  selectedDistrict === 'All' ? 'bg-white text-slate-900 font-extrabold' : 'bg-slate-200 text-slate-800 font-bold'
+                }`}>
+                  {customersList.length}
+                </span>
+              </button>
+
+              {districtCounts.map(([districtName, count]) => {
+                const isActive = selectedDistrict === districtName;
+                return (
+                  <button
+                    key={districtName}
+                    type="button"
+                    onClick={() => setSelectedDistrict(isActive ? 'All' : districtName)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                      isActive
+                        ? 'bg-[#990000] text-white shadow-xs ring-2 ring-red-300'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
+                    }`}
+                    title={`${districtName} জেলায় ${count} জন কাস্টমার আছেন (ক্লিক করে ফিল্টার করুন)`}
+                  >
+                    <span>{districtName}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      isActive ? 'bg-white text-[#990000]' : 'bg-red-100 text-[#990000]'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         {/* 3. Table */}
         <div className="p-6">
@@ -384,8 +478,16 @@ export const AllCustomersPage: React.FC<AllCustomersPageProps> = ({
                       </td>
 
                       {/* District */}
-                      <td className="py-3 px-3.5 font-medium text-slate-700">
-                        {cust.district}
+                      <td className="py-3 px-3.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDistrict(cust.district)}
+                          className="font-semibold text-slate-800 hover:text-[#990000] hover:underline cursor-pointer inline-flex items-center gap-1 transition-colors"
+                          title={`${cust.district} জেলার কাস্টমার ফিল্টার করুন`}
+                        >
+                          <MapPin className="w-3 h-3 text-[#990000]" />
+                          <span>{cust.district}</span>
+                        </button>
                       </td>
 
                       {/* Upazila */}

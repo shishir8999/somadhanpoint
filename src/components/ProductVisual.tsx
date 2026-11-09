@@ -573,11 +573,58 @@ export const ProductVisual: React.FC<ProductVisualProps> = ({ visualType, name, 
         </div>
       );
 
-    default:
+    default: {
+      const lowerName = (name || '').toLowerCase();
+      if (
+        lowerName.includes('shoe') ||
+        lowerName.includes('sandel') ||
+        lowerName.includes('sandal') ||
+        lowerName.includes('hill') ||
+        lowerName.includes('heel') ||
+        lowerName.includes('জুতা') ||
+        lowerName.includes('স্যান্ডেল') ||
+        lowerName.includes('loafer')
+      ) {
+        return (
+          <div className="w-full h-full bg-[#fdf8f6] flex items-center justify-center p-1">
+            <svg viewBox="0 0 100 100" className="w-full h-full max-w-[36px] max-h-[36px] drop-shadow-xs">
+              <path d="M15 65 C25 65, 35 62, 45 52 C55 42, 70 42, 85 58 C85 68, 70 70, 45 70 C25 70, 15 68, 15 65 Z" fill="#b91c1c" />
+              <path d="M78 58 L85 75 L75 75 L70 60 Z" fill="#7f1d1d" />
+              <path d="M20 65 L45 52 L55 60 Z" fill="#ef4444" opacity="0.6" />
+            </svg>
+          </div>
+        );
+      }
+      if (lowerName.includes('bag') || lowerName.includes('purse') || lowerName.includes('ব্যাগ')) {
+        return (
+          <div className="w-full h-full bg-[#fffbeb] flex items-center justify-center p-1">
+            <svg viewBox="0 0 100 100" className="w-full h-full max-w-[36px] max-h-[36px] drop-shadow-xs">
+              <rect x="25" y="38" width="50" height="44" rx="6" fill="#d97706" />
+              <path d="M38 38 C38 24, 62 24, 62 38" fill="none" stroke="#b45309" strokeWidth="5" strokeLinecap="round" />
+              <rect x="44" y="44" width="12" height="10" rx="2" fill="#fef3c7" />
+            </svg>
+          </div>
+        );
+      }
+      if (lowerName.includes('khimar') || lowerName.includes('borka') || lowerName.includes('খিমার') || lowerName.includes('বোরকা') || lowerName.includes('women')) {
+        return (
+          <div className="w-full h-full bg-[#fdf2f2] flex items-center justify-center p-1">
+            <svg viewBox="0 0 100 100" className="w-full h-full max-w-[36px] max-h-[36px] drop-shadow-xs">
+              <ellipse cx="50" cy="30" rx="14" ry="16" fill="#fbcfe8" />
+              <path d="M50 20 C36 20, 28 32, 28 45 C28 70, 18 85, 12 90 L88 90 C82 85, 72 70, 72 45 C72 32, 64 20, 50 20 Z" fill="#990000" />
+            </svg>
+          </div>
+        );
+      }
       return (
-        <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs">
-          পণ্য
+        <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 p-1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-slate-500">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <path d="M3 6h18"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
         </div>
       );
+    }
   }
 };

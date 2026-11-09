@@ -23,6 +23,8 @@ export interface StockItemRow {
   name: string;
   sku?: string;
   visualType: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
   type: string; // 'Single' | '2 Variants' | '3 Variants'
   price: number;
   stockQty: number | string; // e.g. 5, 999, 1000, 0, '—'
@@ -54,12 +56,22 @@ const mapProductToStock = (p: any, idx: number): StockItemRow => {
     status = 'in_stock';
   }
 
+  const img =
+    p.imageUrl ||
+    p.thumbnailUrl ||
+    p.image ||
+    (Array.isArray(p.galleryImages) && p.galleryImages[0]) ||
+    (Array.isArray(p.images) && p.images[0]) ||
+    '';
+
   return {
     id: String(p.id),
     sl: idx + 1,
     name: p.name || 'Product',
     sku: p.sku || `SKU-${p.id}`,
     visualType: p.visualType || 'formal_shoe',
+    imageUrl: img,
+    thumbnailUrl: img,
     type: typeStr,
     price: typeof p.price === 'number' ? p.price : (parseFloat(String(p.price)) || 0),
     stockQty: p.stock !== undefined && p.stock !== null ? p.stock : 100,
@@ -674,8 +686,19 @@ export const StockManagementPage: React.FC<StockManagementPageProps> = ({
                         {/* Product with Image and SKU */}
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded border border-slate-200 bg-slate-50 shrink-0 overflow-hidden flex items-center justify-center p-0.5">
-                              <ProductVisual visualType={item.visualType} name={item.name} />
+                            <div className="w-10 h-10 rounded border border-slate-200 bg-slate-50 shrink-0 overflow-hidden flex items-center justify-center p-0.5 relative">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover rounded"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <ProductVisual visualType={item.visualType} imageUrl={item.imageUrl} name={item.name} />
+                              )}
                             </div>
                             <div>
                               <span className="font-semibold text-slate-900 block line-clamp-1 max-w-sm" title={item.name}>
@@ -837,7 +860,11 @@ export const StockManagementPage: React.FC<StockManagementPageProps> = ({
             <div className="p-5 space-y-4 text-xs">
               <div className="flex items-center gap-3 p-3 bg-red-50/70 border border-red-200 rounded-lg">
                 <div className="w-12 h-12 rounded border border-slate-200 bg-white overflow-hidden flex items-center justify-center p-0.5 shrink-0">
-                  <ProductVisual visualType={productToDelete.visualType} name={productToDelete.name} />
+                  {productToDelete.imageUrl ? (
+                    <img src={productToDelete.imageUrl} alt={productToDelete.name} className="w-full h-full object-cover rounded" />
+                  ) : (
+                    <ProductVisual visualType={productToDelete.visualType} name={productToDelete.name} />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-slate-900 line-clamp-1">{productToDelete.name}</h4>
@@ -899,7 +926,11 @@ export const StockManagementPage: React.FC<StockManagementPageProps> = ({
             <form onSubmit={handleSaveStock} className="p-5 space-y-4 text-xs">
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="w-12 h-12 rounded border border-slate-200 bg-white overflow-hidden flex items-center justify-center p-0.5 shrink-0">
-                  <ProductVisual visualType={managingItem.visualType} name={managingItem.name} />
+                  {managingItem.imageUrl ? (
+                    <img src={managingItem.imageUrl} alt={managingItem.name} className="w-full h-full object-cover rounded" />
+                  ) : (
+                    <ProductVisual visualType={managingItem.visualType} name={managingItem.name} />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-slate-900 line-clamp-1">{managingItem.name}</h4>
